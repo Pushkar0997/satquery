@@ -27,10 +27,9 @@
 
 ```
 Read AGENTS.md, then CONTRACT.md, then spec/plan.md and spec/tasks.md.
-Current milestone is M0. Pick up task M0-DATA-01: curate 15-20 real
-satellite/aerial demo images across at least 2 of the 4 verticals
-(agri-insurance, land records, mining compliance, disaster response),
-save them into /data/tiles/, and update AGENT_LOG.md when done.
+spec/tasks.md is split into 6 independent tracks, one per person. Tell me
+which track number you're picking up (1-6), then pick up its first
+unchecked task and go. Update AGENT_LOG.md when done.
 ```
 
 ---
