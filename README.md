@@ -1,36 +1,136 @@
-# SatQuery AI
+# SatQuery AI V2
 
-The Week 1 foundation for SIH26167. It includes a working frontend shell, a FastAPI backend, mock specialist tools, upload validation and an observable agent trace. The mock tools make the demo reliable while the real VQA, change and fusion models are developed independently.
+SatQuery AI is an agentic remote-sensing assistant designed around the ISRO/SAC problem statement.
 
-## Start in development
+This version replaces the original heuristic prototype with real remote-sensing model integrations.
 
-### Backend
+## Main models
+
+### 1. Single-image VQA / captioning / grounding
+
+Model:
+`aanandmodi/satquery-qwen3vl-bigearthnet-txt-lora`
+
+Base:
+`Qwen/Qwen3-VL-2B-Instruct`
+
+The adapter is specifically described as a QLoRA adapter for SatQuery AI single-image remote-sensing VQA, captioning and grounding, trained using BigEarthNet.txt.
+
+Important limitation:
+It is intended for RGB previews derived from optical imagery. Do not use raw SAR or 12-band Sentinel tensors with this adapter.
+
+### 2. Multitemporal change detection
+
+Model:
+`deepang/adaptformer-LEVIR-CD`
+
+This is a real remote-sensing change-detection model fine-tuned on LEVIR-CD. Its strongest scope is building-related change detection.
+
+### 3. Optical + SAR feature fusion
+
+Model:
+`BiliSakura/CROMA-transformers`
+
+CROMA is a remote-sensing foundation model designed for Sentinel-1 SAR + Sentinel-2 optical multimodal representations.
+
+The current demo converts uploaded images into a compatible demonstration representation. For final ISRO evaluation, replace this with true co-registered Sentinel-1/Sentinel-2 multiband GeoTIFF ingestion.
+
+## Simple-language disaster awareness
+
+The system intentionally does NOT say:
+
+"Flood will happen tomorrow."
+
+A satellite image cannot reliably establish a future disaster by itself.
+
+Instead, the system says things such as:
+
+"In simple words: The image shows a large area of water covering land that appears normally dry. This may indicate flooding."
+
+It also displays a warning:
+
+"This result shows what the satellite image appears to contain. It is not a guaranteed prediction of a future disaster. Use official weather, emergency-management and ground reports for decisions."
+
+## Install
+
+Use Python 3.11.
 
 ```bash
-cd backend
-python -m pip install -e .
-uvicorn app.main:app --reload --port 8000
+python -m venv .venv
+.venv\Scripts\activate
+pip install --upgrade pip
+pip install -r requirements.txt
 ```
 
-### Frontend
+Then:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+streamlit run app.py
 ```
 
-Open `http://localhost:5173`. The Vite development server forwards `/api` to FastAPI on port 8000.
+The first model run downloads several GB of model weights. GPU is strongly recommended.
 
-### Verify the Week 1 workflow
+## Test 1: single image
 
-```bash
-cd backend
-python -m unittest discover -s tests
-```
+Upload one RGB satellite image.
 
-## Week 1 demo contract
+Ask:
 
-The UI is complete enough to demonstrate all three analysis modes using deterministic, clearly labelled mock adapters. In single-image mode, both VQA and scene-caption adapters execute so the required second single-image capability is visible in the trace. `POST /api/v1/analyses` returns an answer, confidence, evidence overlay and execution trace. Later ML code replaces only files in `backend/app/models/`; it must preserve the response contract in `backend/app/schemas/analysis.py`.
+`Describe the land cover and explain any visible disaster-related risk in simple language.`
 
-Read [docs/api-contract.md](docs/api-contract.md) before changing a request or response field.
+Or:
+
+`Is there visible flooding? Explain in simple language.`
+
+## Test 2: grounding
+
+Upload one image.
+
+Ask:
+
+`Where is the water body? Give a simple explanation.`
+
+## Test 3: change detection
+
+Upload two images of the same area from different dates.
+
+Ask:
+
+`What changed between these two dates? Explain it simply.`
+
+The current change model is strongest for building change.
+
+## Test 4: optical + SAR
+
+For the CROMA workflow, use properly aligned Sentinel-2 optical and Sentinel-1 SAR data. Ordinary screenshots are only a limited demo representation.
+
+## Important ISRO submission note
+
+This V2 is much closer to the required architecture, but it should not yet be presented as a validated ISRO solution.
+
+Before final submission, add:
+
+1. Real Cartosat-2S optical + RISAT SAR preprocessing.
+2. GeoTIFF metadata and geospatial coordinates.
+3. Proper co-registration and reprojection.
+4. A real optical-SAR specialist that accepts the required raw bands.
+5. CDVQA/change-description evaluation.
+6. VRSBench/RSVQA benchmark evaluation.
+7. ISRO/SAC hidden-dataset testing.
+8. Calibrated confidence and abstention.
+9. Visual evidence overlays and downloadable reports.
+10. Fine-tuning/adaptation experiments and quantitative results.
+
+## Architecture
+
+User
+→ Streamlit
+→ LangGraph query interpreter
+→ input validator
+→ specialist model router
+→ remote-sensing model
+→ evidence extraction
+→ simple-language synthesis
+→ answer + evidence + confidence + trace
+
+The agent's internal reasoning is not exposed. Only an auditable execution trace is displayed.
