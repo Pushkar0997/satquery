@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SatQuery AI — Ask your satellite archive a question</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#FBF6EC;
+    --sand:#F0E1C6;
+    --sand-dark:#E4CE9F;
+    --ink:#2C3A36;
+    --ink-soft:#5C6B64;
+    --ochre:#D98E3F;
+    --ochre-dark:#B96F27;
+    --sage:#5C8368;
+    --sage-dark:#436049;
+    --sky:#7FA7C4;
+    --sky-dark:#4F7896;
+    --rust:#B6543F;
+    --line: rgba(44,58,54,0.12);
+    --shadow: 0 1px 2px rgba(44,58,54,0.06), 0 8px 24px rgba(44,58,54,0.07);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--cream);
+    color:var(--ink);
+    font-family:Inter, Arial, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.serif{ font-family:Georgia, 'Times New Roman', serif; }
+  a{color:inherit;}
+  img,svg{display:block;}
+  .wrap{ max-width:1180px; margin:0 auto; padding:0 32px; }
+
+  /* ---------- focus ---------- */
+  button:focus-visible, input:focus-visible, [tabindex]:focus-visible{
+    outline:2px solid var(--ochre-dark); outline-offset:2px;
+  }
+
+  /* ---------- header ---------- */
+  header{
+    position:sticky; top:0; z-index:40;
+    background:rgba(251,246,236,0.88);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 0;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand-mark{
+    width:34px; height:34px; border-radius:50%;
+    background:var(--ochre); display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .brand-name{ font-family:Georgia, 'Times New Roman', serif; font-weight:600; font-size:19px; letter-spacing:-0.01em; }
+  .brand-tag{ font-size:11px; color:var(--ink-soft); margin-top:1px; }
+  nav.links{ display:flex; gap:28px; font-size:14.5px; }
+  nav.links a{ text-decoration:none; color:var(--ink-soft); transition:color .15s; }
+  nav.links a:hover{ color:var(--ink); }
+  .pill{
+    font-size:12.5px; padding:6px 13px; border-radius:100px;
+    background:var(--sand); color:var(--ink-soft); font-weight:500;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+
+  /* ---------- hero intro ---------- */
+  .hero-intro{ padding:56px 0 34px; text-align:left; }
+  .hero-intro h1{
+    font-size:44px; line-height:1.08; font-weight:600; letter-spacing:-0.015em;
+    max-width:720px; margin:0 0 16px;
+  }
+  .hero-intro p{
+    font-size:17px; line-height:1.55; color:var(--ink-soft); max-width:560px; margin:0;
+  }
+
+  /* ---------- app frame (the interactive demo) ---------- */
+  .app-frame{
+    display:grid; grid-template-columns: 1.35fr 1fr;
+    gap:0; border-radius:20px; overflow:hidden;
+    border:1px solid var(--line); box-shadow:var(--shadow);
+    background:#fff;
+    margin-bottom:22px;
+  }
+  @media (max-width: 880px){ .app-frame{ grid-template-columns:1fr; } }
+
+  /* --- map side --- */
+  .map-side{ position:relative; background:var(--sand); border-right:1px solid var(--line); }
+  .map-toolbar{
+    position:absolute; top:14px; left:14px; right:14px; z-index:5;
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  }
+  .tool-btn{
+    font-family:Inter, Arial, sans-serif; font-size:12.5px; font-weight:600; color:var(--ink);
+    background:rgba(255,255,255,0.92); border:1px solid var(--line);
+    padding:7px 12px; border-radius:9px; cursor:pointer;
+    display:flex; align-items:center; gap:6px;
+    transition:background .15s, transform .1s;
+    box-shadow:0 1px 3px rgba(44,58,54,0.08);
+  }
+  .tool-btn:hover{ background:#fff; }
+  .tool-btn:active{ transform:scale(0.97); }
+  .tool-btn.active{ background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .layer-chips{ margin-left:auto; display:flex; gap:6px; }
+  .layer-chip{
+    font-size:11.5px; font-weight:600; padding:6px 10px; border-radius:8px;
+    background:rgba(255,255,255,0.85); border:1px solid var(--line); cursor:pointer;
+    color:var(--ink-soft); transition:.15s;
+  }
+  .layer-chip.on{ background:var(--sage); color:#fff; border-color:var(--sage); }
+
+  .canvas-holder{
+    position:relative; width:100%; aspect-ratio: 4 / 3.1; overflow:hidden;
+  }
+  .canvas-holder svg{ width:100%; height:100%; display:block; }
+  .after-layer{
+    position:absolute; inset:0;
+    clip-path: inset(0 100% 0 0);
+    transition: clip-path .04s linear;
+  }
+  .compare-handle{
+    position:absolute; top:0; bottom:0; width:0; z-index:6;
+    left:0%;
+    pointer-events:none;
+  }
+  .compare-handle .line{ position:absolute; top:0; bottom:0; left:0; width:2px; background:#fff; box-shadow:0 0 0 1px rgba(44,58,54,0.25); }
+  .compare-handle .knob{
+    position:absolute; top:50%; left:0; transform:translate(-50%,-50%);
+    width:34px; height:34px; border-radius:50%; background:#fff;
+    box-shadow:0 2px 8px rgba(44,58,54,0.3);
+    display:flex; align-items:center; justify-content:center; gap:2px;
+  }
+  .compare-range{
+    position:absolute; inset:0; width:100%; height:100%;
+    opacity:0; cursor:ew-resize; margin:0; z-index:7;
+  }
+  .compare-labels{ position:absolute; bottom:12px; left:14px; right:14px; display:flex; justify-content:space-between; pointer-events:none; z-index:5;}
+  .compare-labels span{
+    font-size:11px; font-weight:600; background:rgba(44,58,54,0.75); color:#fff;
+    padding:4px 9px; border-radius:100px;
+  }
+
+  .aoi-box{
+    position:absolute; border:2px dashed var(--rust); border-radius:6px;
+    left:53%; top:38%; width:19%; height:16%;
+    opacity:0; transition:opacity .4s ease; pointer-events:none; z-index:8;
+  }
+  .aoi-box.show{ opacity:1; animation:pulseBox 1.8s ease-in-out infinite; }
+  @keyframes pulseBox{
+    0%,100%{ box-shadow:0 0 0 0 rgba(182,84,63,0.35); }
+    50%{ box-shadow:0 0 0 7px rgba(182,84,63,0); }
+  }
+  .aoi-label{
+    position:absolute; left:53%; top:calc(38% - 22px);
+    font-size:10.5px; font-weight:700; color:#fff; background:var(--rust);
+    padding:2px 8px; border-radius:5px; opacity:0; transition:opacity .4s ease; z-index:8;
+  }
+  .aoi-label.show{ opacity:1; }
+
+  /* --- chat side --- */
+  .chat-side{ display:flex; flex-direction:column; background:#fff; }
+  .chat-head{ padding:18px 20px 12px; border-bottom:1px solid var(--line); }
+  .chat-head .title{ font-weight:600; font-size:15px; display:flex; align-items:center; gap:8px; }
+  .status-dot{ width:7px; height:7px; border-radius:50%; background:var(--sage); flex-shrink:0; }
+  .chat-head .sub{ font-size:12.5px; color:var(--ink-soft); margin-top:3px; }
+
+  .chat-log{
+    flex:1; overflow-y:auto; padding:18px 20px; display:flex; flex-direction:column; gap:14px;
+    min-height:300px; max-height:420px;
+  }
+  .msg{ max-width:92%; font-size:14px; line-height:1.5; }
+  .msg.user{ align-self:flex-end; }
+  .msg.user .bubble{ background:var(--ink); color:var(--cream); border-radius:14px 14px 3px 14px; }
+  .msg.agent .bubble{ background:var(--sand); color:var(--ink); border-radius:14px 14px 14px 3px; }
+  .bubble{ padding:11px 14px; }
+
+  .trace{
+    background:#fff; border:1px solid var(--line); border-radius:12px;
+    padding:4px 4px 4px 4px; margin-top:8px; overflow:hidden;
+  }
+  .trace-toggle{
+    width:100%; background:none; border:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:9px 10px; font-size:12px; font-weight:600; color:var(--ink-soft);
+    font-family:Inter, Arial, sans-serif;
+  }
+  .trace-toggle svg{ transition:transform .2s; }
+  .trace-body{ max-height:0; overflow:hidden; transition:max-height .3s ease; padding:0 12px; }
+  .trace-body.open{ max-height:260px; padding:2px 12px 10px; }
+  .trace-step{
+    display:flex; align-items:flex-start; gap:9px; padding:6px 0;
+    opacity:0.25; transition:opacity .3s ease;
+  }
+  .trace-step.done{ opacity:1; }
+  .trace-check{
+    width:17px; height:17px; border-radius:50%; border:1.5px solid var(--line);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;
+    transition:background .2s, border-color .2s;
+  }
+  .trace-step.done .trace-check{ background:var(--sage); border-color:var(--sage); }
+  .trace-text b{ display:block; font-size:12.5px; font-weight:600; color:var(--ink); }
+  .trace-text span{ font-size:11.5px; color:var(--ink-soft); }
+
+  .confidence{
+    display:inline-flex; align-items:center; gap:6px; margin-top:9px;
+    font-size:11.5px; font-weight:600; color:var(--sage-dark);
+    background:rgba(92,131,104,0.12); padding:4px 10px; border-radius:100px;
+  }
+
+  .thinking{ display:flex; gap:4px; align-items:center; padding:11px 14px; }
+  .thinking span{ width:6px; height:6px; border-radius:50%; background:var(--ink-soft); animation:bounce 1.1s infinite ease-in-out; }
+  .thinking span:nth-child(2){ animation-delay:.15s; }
+  .thinking span:nth-child(3){ animation-delay:.3s; }
+  @keyframes bounce{ 0%,80%,100%{ transform:translateY(0); opacity:.4; } 40%{ transform:translateY(-4px); opacity:1; } }
+
+  .chip-row{ display:flex; gap:7px; flex-wrap:wrap; padding:0 20px 14px; }
+  .chip{
+    font-size:12px; font-family:Inter, Arial, sans-serif; font-weight:500; color:var(--ochre-dark);
+    background:rgba(217,142,63,0.12); border:1px solid rgba(217,142,63,0.25);
+    padding:7px 12px; border-radius:100px; cursor:pointer; transition:.15s;
+  }
+  .chip:hover{ background:rgba(217,142,63,0.22); }
+
+  .chat-input-row{
+    display:flex; gap:8px; padding:14px 16px; border-top:1px solid var(--line);
+  }
+  .chat-input-row input{
+    flex:1; border:1px solid var(--line); border-radius:11px; padding:11px 14px;
+    font-size:14px; font-family:Inter, Arial, sans-serif; background:var(--cream); color:var(--ink);
+  }
+  .chat-input-row input::placeholder{ color:var(--ink-soft); }
+  .send-btn{
+    width:42px; height:42px; border-radius:11px; background:var(--ink); border:none;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;
+    transition:background .15s, transform .1s;
+  }
+  .send-btn:hover{ background:var(--ochre-dark); }
+  .send-btn:active{ transform:scale(0.94); }
+
+  /* ---------- use cases (editorial, asymmetric) ---------- */
+  .section{ padding:64px 0; }
+  .section-head{ margin-bottom:34px; max-width:600px; }
+  .section-head h2{ font-size:30px; font-weight:600; letter-spacing:-0.01em; margin:0 0 10px; }
+  .section-head p{ color:var(--ink-soft); font-size:15.5px; line-height:1.55; margin:0; }
+
+  .usecase-grid{ display:grid; grid-template-columns: 1.3fr 1fr; gap:18px; }
+  @media (max-width: 880px){ .usecase-grid{ grid-template-columns:1fr; } }
+  .feature-card{
+    background:var(--ink); color:var(--cream); border-radius:18px; padding:32px;
+    display:flex; flex-direction:column; justify-content:flex-end; min-height:340px;
+    position:relative; overflow:hidden;
+  }
+  .feature-card .tag{ font-size:12px; font-weight:600; color:var(--sky); margin-bottom:10px; }
+  .feature-card h3{ font-size:24px; font-weight:600; margin:0 0 10px; max-width:380px; }
+  .feature-card p{ font-size:14px; line-height:1.55; color:rgba(251,246,236,0.75); max-width:380px; margin:0; }
+  .feature-deco{ position:absolute; top:-40px; right:-40px; width:220px; height:220px; opacity:0.5; }
+
+  .mini-list{ display:flex; flex-direction:column; gap:14px; }
+  .mini-card{
+    background:#fff; border:1px solid var(--line); border-radius:14px; padding:20px 22px;
+    display:flex; gap:14px; align-items:flex-start;
+  }
+  .mini-icon{
+    width:38px; height:38px; border-radius:10px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .mini-card h4{ font-size:15px; font-weight:600; margin:0 0 4px; }
+  .mini-card p{ font-size:13px; color:var(--ink-soft); line-height:1.5; margin:0; }
+
+  /* ---------- pipeline ---------- */
+  .pipeline{ display:flex; gap:0; align-items:stretch; flex-wrap:wrap; }
+  .pipe-step{
+    flex:1; min-width:190px; background:#fff; border:1px solid var(--line);
+    border-radius:14px; padding:22px; position:relative;
+  }
+  .pipe-num{
+    font-family:Georgia, 'Times New Roman', serif; font-size:13px; font-weight:600; color:var(--ochre-dark);
+    margin-bottom:12px;
+  }
+  .pipe-step h4{ font-size:15px; font-weight:600; margin:0 0 6px; }
+  .pipe-step p{ font-size:12.5px; color:var(--ink-soft); line-height:1.5; margin:0; }
+  .pipe-arrow{ display:flex; align-items:center; padding:0 10px; color:var(--ink-soft); flex-shrink:0; }
+  @media (max-width: 900px){ .pipe-arrow{ display:none; } .pipeline{ flex-direction:column; } }
+
+  footer{ border-top:1px solid var(--line); padding:28px 0; }
+  .footer-row{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+  .footer-row p{ font-size:12.5px; color:var(--ink-soft); margin:0; }
+
+  .sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8" stroke="#FBF6EC" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="12" r="3.2" stroke="#FBF6EC" stroke-width="1.6"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">SatQuery AI</div>
+        <div class="brand-tag">Vision-language assistant for remote sensing</div>
+      </div>
+    </div>
+    <nav class="links">
+      <a href="#demo">Demo</a>
+      <a href="#usecases">Use cases</a>
+      <a href="#pipeline">How it works</a>
+    </nav>
+    <span class="pill">Space Technology · SIH 2026</span>
+  </div>
+</header>
+
+<section class="hero-intro">
+  <div class="wrap">
+    <h1>Ask your satellite archive a question, get an answer you can trust.</h1>
+    <p>SatQuery AI reads plain-language questions, chooses the right specialist model for the job, and answers with real imagery evidence — no GIS degree required.</p>
+  </div>
+</section>
+
+<section id="demo" class="wrap">
+  <div class="app-frame">
+
+    <!-- MAP SIDE -->
+    <div class="map-side">
+      <div class="map-toolbar">
+        <button class="tool-btn" id="drawBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 20l3.5-1 11-11-2.5-2.5-11 11L4 20z" stroke="#2C3A36" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          Draw AOI
+        </button>
+        <div class="layer-chips">
+          <div class="layer-chip on" data-layer="optical">Optical</div>
+          <div class="layer-chip" data-layer="sar">SAR</div>
+          <div class="layer-chip" data-layer="ndvi">NDVI</div>
+        </div>
+      </div>
+
+      <div class="canvas-holder" id="canvasHolder">
+        <!-- BEFORE (base) landscape -->
+        <svg viewBox="0 0 800 620" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#F3E6C9"/>
+              <stop offset="100%" stop-color="#EAD6A6"/>
+            </linearGradient>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="1"/>
+            </pattern>
+            <pattern id="crops" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(12)">
+              <line x1="0" y1="0" x2="0" y2="14" stroke="#B96F27" stroke-opacity="0.35" stroke-width="3"/>
+            </pattern>
+          </defs>
+          <rect width="800" height="620" fill="url(#bg)"/>
+
+          <!-- forest patches -->
+          <g fill="#5C8368">
+            <path d="M40 60 Q100 20 170 55 Q220 80 190 140 Q140 170 90 140 Q30 120 40 60Z" opacity="0.9"/>
+            <path d="M600 420 Q680 390 730 440 Q760 490 700 520 Q630 540 600 490 Q580 450 600 420Z" opacity="0.9"/>
+          </g>
+
+          <!-- river -->
+          <path d="M760 20 C 620 120, 560 90, 500 190 C 440 290, 520 320, 470 420 C 430 500, 330 500, 300 590"
+                fill="none" stroke="#7FA7C4" stroke-width="34" stroke-linecap="round" opacity="0.9"/>
+          <path d="M760 20 C 620 120, 560 90, 500 190 C 440 290, 520 320, 470 420 C 430 500, 330 500, 300 590"
+                fill="none" stroke="#9CBFD8" stroke-width="34" stroke-linecap="round" opacity="0.35" stroke-dasharray="2 10"/>
+
+          <!-- farmland plots -->
+          <g>
+            <rect x="120" y="220" width="150" height="110" rx="6" fill="#E4B168" opacity="0.9"/>
+            <rect x="120" y="220" width="150" height="110" rx="6" fill="url(#crops)"/>
+            <rect x="280" y="260" width="120" height="90" rx="6" fill="#DCA85B" opacity="0.9"/>
+            <rect x="280" y="260" width="120" height="90" rx="6" fill="url(#crops)"/>
+            <rect x="150" y="350" width="130" height="95" rx="6" fill="#E4B168" opacity="0.9"/>
+            <rect x="150" y="350" width="130" height="95" rx="6" fill="url(#crops)"/>
+            <rect x="500" y="470" width="140" height="100" rx="6" fill="#DCA85B" opacity="0.9"/>
+            <rect x="500" y="470" width="140" height="100" rx="6" fill="url(#crops)"/>
+          </g>
+
+          <!-- village near river bend (this is the AOI target) -->
+          <g>
+            <rect x="452" y="255" width="16" height="14" rx="2" fill="#B6543F"/>
+            <rect x="472" y="248" width="14" height="12" rx="2" fill="#B6543F"/>
+            <rect x="460" y="272" width="15" height="13" rx="2" fill="#8f4232"/>
+            <rect x="480" y="266" width="13" height="12" rx="2" fill="#B6543F"/>
+            <rect x="440" y="270" width="13" height="12" rx="2" fill="#8f4232"/>
+          </g>
+
+          <rect width="800" height="620" fill="url(#grid)"/>
+        </svg>
+
+        <!-- AFTER (flooded) landscape, revealed by slider -->
+        <div class="after-layer" id="afterLayer">
+          <svg viewBox="0 0 800 620" preserveAspectRatio="xMidYMid slice">
+            <defs>
+              <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#F3E6C9"/>
+                <stop offset="100%" stop-color="#EAD6A6"/>
+              </linearGradient>
+            </defs>
+            <rect width="800" height="620" fill="url(#bg2)"/>
+            <g fill="#5C8368">
+              <path d="M40 60 Q100 20 170 55 Q220 80 190 140 Q140 170 90 140 Q30 120 40 60Z" opacity="0.9"/>
+              <path d="M600 420 Q680 390 730 440 Q760 490 700 520 Q630 540 600 490 Q580 450 600 420Z" opacity="0.6"/>
+            </g>
+            <path d="M760 20 C 620 120, 560 90, 500 190 C 440 290, 520 320, 470 420 C 430 500, 330 500, 300 590"
+                  fill="none" stroke="#7FA7C4" stroke-width="34" stroke-linecap="round" opacity="0.9"/>
+            <!-- flood extent overlay -->
+            <path d="M760 40 C 600 150, 590 160, 520 220 C 430 300, 560 330, 500 420 C 440 500, 330 480, 260 600 L 700 600 C 760 500, 780 300, 760 40 Z"
+                  fill="#4F7896" opacity="0.55"/>
+            <path d="M120 220 h150 v110 h-150 z" fill="#4F7896" opacity="0.5"/>
+            <path d="M280 260 h120 v90 h-120 z" fill="#4F7896" opacity="0.45"/>
+            <!-- village partially submerged -->
+            <g fill="#8f4232" opacity="0.6">
+              <rect x="452" y="255" width="16" height="14" rx="2"/>
+              <rect x="472" y="248" width="14" height="12" rx="2"/>
+              <rect x="460" y="272" width="15" height="13" rx="2"/>
+            </g>
+            <rect width="800" height="620" fill="url(#grid)"/>
+          </svg>
+        </div>
+
+        <div class="compare-handle" id="compareHandle">
+          <div class="line"></div>
+          <div class="knob">
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M5 1L1 5l4 4M9 1l4 4-4 4" stroke="#2C3A36" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+        <input type="range" class="compare-range" id="compareRange" min="0" max="100" value="0" aria-label="Before and after comparison slider">
+
+        <div class="compare-labels"><span>Before · Mar 2023</span><span>After · Jul 2025</span></div>
+
+        <div class="aoi-box" id="aoiBox"></div>
+        <div class="aoi-label" id="aoiLabel">Evidence tile</div>
+      </div>
+    </div>
+
+    <!-- CHAT SIDE -->
+    <div class="chat-side">
+      <div class="chat-head">
+        <div class="title"><span class="status-dot"></span>SatQuery assistant</div>
+        <div class="sub">Grounded in Sentinel-1 / Sentinel-2 imagery over the ISRO / Bhuvan archive</div>
+      </div>
+
+      <div class="chat-log" id="chatLog">
+        <div class="msg agent">
+          <div class="bubble">Ask me about any region — try a suggestion below, or type your own question.</div>
+        </div>
+      </div>
+
+      <div class="chip-row" id="chipRow">
+        <div class="chip" data-scenario="flood">What changed near this river between 2023–25?</div>
+        <div class="chip" data-scenario="crop">How healthy is the cropland near the village?</div>
+        <div class="chip" data-scenario="border">Any new construction along the forest edge?</div>
+      </div>
+
+      <div class="chat-input-row">
+        <input type="text" id="chatInput" placeholder="Ask about a region, e.g. “flood extent near…”" autocomplete="off">
+        <button class="send-btn" id="sendBtn" aria-label="Send">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 12h15M13 6l6 6-6 6" stroke="#FBF6EC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="usecases" class="section wrap">
+  <div class="section-head">
+    <h2>Built for the moments when minutes matter</h2>
+    <p>The same architecture generalises across very different users — from a disaster response cell to a land-records office.</p>
+  </div>
+
+  <div class="usecase-grid">
+    <div class="feature-card">
+      <svg class="feature-deco" viewBox="0 0 200 200" fill="none"><circle cx="100" cy="100" r="90" stroke="#7FA7C4" stroke-width="1.5"/><circle cx="100" cy="100" r="60" stroke="#7FA7C4" stroke-width="1.5"/></svg>
+      <span class="tag">Disaster management</span>
+      <h3>Flood and earthquake response, without waiting on a specialist</h3>
+      <p>SAR imagery sees through storm cloud cover. During an active flood, response teams can ask for extent and affected settlements in plain language and get a grounded answer in minutes, not days.</p>
+    </div>
+
+    <div class="mini-list">
+      <div class="mini-card">
+        <div class="mini-icon" style="background:rgba(92,131,104,0.15);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1 3-6z" stroke="#436049" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <h4>Agri-insurance</h4>
+          <p>Verify crop damage claims from a single query, backed by dated imagery evidence.</p>
+        </div>
+      </div>
+      <div class="mini-card">
+        <div class="mini-icon" style="background:rgba(217,142,63,0.15);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 21V9l8-6 8 6v12M9 21v-6h6v6" stroke="#B96F27" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <h4>Land records</h4>
+          <p>Any officer can check boundary or encroachment questions directly, no GIS training needed.</p>
+        </div>
+      </div>
+      <div class="mini-card">
+        <div class="mini-icon" style="background:rgba(127,167,196,0.18);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 12h18M3 6h18M3 18h18" stroke="#4F7896" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <div>
+          <h4>Border &amp; infrastructure monitoring</h4>
+          <p>Track construction or terrain change over time along a fixed corridor, continuously.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pipeline" class="section wrap">
+  <div class="section-head">
+    <h2>What happens after you hit send</h2>
+    <p>A query is never answered by a single model. An agentic controller decides what the question actually needs, then routes it.</p>
+  </div>
+
+  <div class="pipeline">
+    <div class="pipe-step">
+      <div class="pipe-num">01</div>
+      <h4>Interpret the query</h4>
+      <p>Extracts location, date range, and intent from your plain-language question.</p>
+    </div>
+    <div class="pipe-arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+    <div class="pipe-step">
+      <div class="pipe-num">02</div>
+      <h4>Validate the input</h4>
+      <p>Checks what imagery is actually available — cloud cover, modality, co-registration.</p>
+    </div>
+    <div class="pipe-arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+    <div class="pipe-step">
+      <div class="pipe-num">03</div>
+      <h4>Route to a specialist model</h4>
+      <p>Picks from a registry: VQA, captioning, change-detection, or optical–SAR fusion.</p>
+    </div>
+    <div class="pipe-arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+    <div class="pipe-step">
+      <div class="pipe-num">04</div>
+      <h4>Answer with evidence</h4>
+      <p>Combines outputs into one grounded answer, with a confidence score and audit trail.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap footer-row">
+    <p>SatQuery AI — SIH26167 · Smart India Hackathon 2026 · Demo build, not connected to live imagery</p>
+    <p>Data: ISRO Bhuvan / NRSC · Sentinel-1 / Sentinel-2</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  const chatLog = document.getElementById('chatLog');
+  const chatInput = document.getElementById('chatInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const chipRow = document.getElementById('chipRow');
+  const aoiBox = document.getElementById('aoiBox');
+  const aoiLabel = document.getElementById('aoiLabel');
+  const compareRange = document.getElementById('compareRange');
+  const compareHandle = document.getElementById('compareHandle');
+  const afterLayer = document.getElementById('afterLayer');
+  const drawBtn = document.getElementById('drawBtn');
+  const layerChips = document.querySelectorAll('.layer-chip');
+
+  const scenarios = {
+    flood: { confidence:87, revealFlood:true },
+    crop: { confidence:79, revealFlood:false },
+    border: { confidence:68, revealFlood:false },
+    default: { confidence:74, revealFlood:false }
+  };
+
+  function addMessage(role, html){
+    const div=document.createElement('div'); div.className='msg '+role;
+    div.innerHTML='<div class="bubble">'+html+'</div>';
+    chatLog.appendChild(div); chatLog.scrollTop=chatLog.scrollHeight; return div;
+  }
+  function addThinking(){
+    const div=document.createElement('div'); div.className='msg agent';
+    div.innerHTML='<div class="bubble thinking"><span></span><span></span><span></span></div>';
+    chatLog.appendChild(div); chatLog.scrollTop=chatLog.scrollHeight; return div;
+  }
+  const traceSteps=[
+    ['Interpreting query','Extracted location, date range and intent'],
+    ['Validating imagery','Checked cloud cover and modality availability'],
+    ['Routing to specialist model','Selected change-detection / VQA model'],
+    ['Executing & combining','Ran model, merged outputs, scored confidence'],
+    ['Answer synthesised','Composed grounded response with evidence']
+  ];
+  function buildTraceHTML(){
+    return traceSteps.map((s,i)=>'<div class="trace-step" data-i="'+i+'"><div class="trace-check"></div><div class="trace-text"><b>'+s[0]+'</b><span>'+s[1]+'</span></div></div>').join('');
+  }
+  function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));}
+
+  async function runQuery(text, scenarioHint=null){
+    addMessage('user', escapeHTML(text));
+    const think=addThinking();
+    sendBtn.disabled=true;
+    try{
+      const res=await fetch('/api/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:text,scenario:scenarioHint})});
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const data=await res.json();
+      think.remove();
+      const sc=scenarios[data.scenario] || scenarios.default;
+      const agentDiv=addMessage('agent',
+        escapeHTML(data.answer)+
+        '<div class="confidence"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#436049" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Confidence '+data.confidence+'%</div>'+ 
+        '<div class="trace"><button class="trace-toggle" aria-expanded="false">How I got this answer<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#5C6B64" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="trace-body">'+buildTraceHTML()+'</div></div>'
+      );
+      const toggle=agentDiv.querySelector('.trace-toggle'), body=agentDiv.querySelector('.trace-body');
+      toggle.addEventListener('click',()=>{const open=body.classList.toggle('open');toggle.setAttribute('aria-expanded',open);toggle.querySelector('svg').style.transform=open?'rotate(180deg)':'rotate(0deg)';});
+      body.classList.add('open'); toggle.setAttribute('aria-expanded','true'); toggle.querySelector('svg').style.transform='rotate(180deg)';
+      agentDiv.querySelectorAll('.trace-step').forEach((el,i)=>setTimeout(()=>el.classList.add('done'),220*(i+1)));
+      aoiBox.classList.add('show'); aoiLabel.classList.add('show');
+      if(data.reveal_flood) animateSlider(72);
+      chatLog.scrollTop=chatLog.scrollHeight;
+    }catch(err){
+      think.remove();
+      addMessage('agent','I could not reach the SatQuery backend. Make sure you started the Flask app with <b>python run.py</b>.');
+      console.error(err);
+    }finally{sendBtn.disabled=false;chatInput.focus();}
+  }
+  function animateSlider(target){let val=parseInt(compareRange.value,10);function step(){val+=(target-val)*.14;if(Math.abs(target-val)<.5)val=target;setSlider(val);if(val!==target)requestAnimationFrame(step);}requestAnimationFrame(step);}
+  function setSlider(val){compareRange.value=val;afterLayer.style.clipPath='inset(0 '+(100-val)+'% 0 0)';compareHandle.style.left=val+'%';}
+  compareRange.addEventListener('input',e=>setSlider(e.target.value)); setSlider(0);
+  chipRow.addEventListener('click',e=>{const chip=e.target.closest('.chip');if(chip)runQuery(chip.textContent.trim(),chip.dataset.scenario);});
+  function handleSend(){const text=chatInput.value.trim();if(text){chatInput.value='';runQuery(text);}}
+  sendBtn.addEventListener('click',handleSend); chatInput.addEventListener('keydown',e=>{if(e.key==='Enter')handleSend();});
+  drawBtn.addEventListener('click',()=>{drawBtn.classList.toggle('active');aoiBox.classList.toggle('show',drawBtn.classList.contains('active'));aoiLabel.classList.toggle('show',drawBtn.classList.contains('active'));});
+  layerChips.forEach(chip=>chip.addEventListener('click',()=>{layerChips.forEach(c=>c.classList.remove('on'));chip.classList.add('on');}));
+})();
+</script>
+
+</body>
+</html>
