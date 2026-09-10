@@ -1,16 +1,36 @@
 # SatQuery AI
 
-Natural-language query interface over satellite imagery — SIH26167, ISRO. Ask a plain-language question about a region, get an answer grounded in retrieved evidence.
+The Week 1 foundation for SIH26167. It includes a working frontend shell, a FastAPI backend, mock specialist tools, upload validation and an observable agent trace. The mock tools make the demo reliable while the real VQA, change and fusion models are developed independently.
 
-**Building this?** Start at `BRIEF.md`, not here — this file is for anyone arriving from outside the build (the mentor, a judge browsing the repo). `BRIEF.md` is the working dashboard for the team.
+## Start in development
 
-## Quick links
+### Backend
 
-- `docs/` — the submitted idea presentation (pptx + pdf)
-- `frontend/index.html` — the presentation UX prototype (open directly in a browser, no setup)
-- `notebooks/satquery_pipeline.ipynb` — the real retrieval pipeline (run in Google Colab with GPU)
-- `spec/` — the full project spec: product, architecture, plan, tasks, evals
+```bash
+cd backend
+python -m pip install -e .
+uvicorn app.main:app --reload --port 8000
+```
 
-## What's real vs. illustrative right now
+### Frontend
 
-`frontend/index.html` currently ships with scripted example responses for the presentation. `notebooks/satquery_pipeline.ipynb` is the real thing — actual retrieval over actual image embeddings. See `CONTRACT.md` for exactly what that distinction means and why it matters.
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173`. The Vite development server forwards `/api` to FastAPI on port 8000.
+
+### Verify the Week 1 workflow
+
+```bash
+cd backend
+python -m unittest discover -s tests
+```
+
+## Week 1 demo contract
+
+The UI is complete enough to demonstrate all three analysis modes using deterministic, clearly labelled mock adapters. In single-image mode, both VQA and scene-caption adapters execute so the required second single-image capability is visible in the trace. `POST /api/v1/analyses` returns an answer, confidence, evidence overlay and execution trace. Later ML code replaces only files in `backend/app/models/`; it must preserve the response contract in `backend/app/schemas/analysis.py`.
+
+Read [docs/api-contract.md](docs/api-contract.md) before changing a request or response field.
