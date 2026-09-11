@@ -14,6 +14,16 @@ Rejected alternatives are the point — without them, the next person re-propose
 
 ---
 
+## D-011 — Dedicated microphone widget for the local voice-query UI
+
+**Status:** decided (2026-09-11)
+**Decision:** replace Streamlit's built-in `st.audio_input` with `streamlit-mic-recorder==0.0.8`, configured to return WAV audio directly to the existing local Faster-Whisper service. The recognised query is written into the visible query field before the user selects **Analyze**.
+**Rationale:** the built-in browser recorder was failing before it supplied audio to Python. The replacement provides a dedicated start/stop control and WAV bytes, avoiding a browser-format conversion dependency for the normal microphone path.
+**Rejected:** retaining the failing recorder and asking every demo machine to install FFmpeg as a workaround.
+**Revisit if:** the component becomes incompatible with the pinned Streamlit version or a supported Bhashini service is available.
+
+---
+
 ## D-001 — Agri-insurance as the single primary persona for the prototype
 
 **Status:** decided

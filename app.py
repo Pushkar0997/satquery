@@ -3,6 +3,7 @@ import os
 
 import streamlit as st
 from dotenv import load_dotenv
+from streamlit_mic_recorder import mic_recorder
 
 from agent.graph import run_agent
 from tools.speech_to_text import SpeechToTextError, transcribe_audio
@@ -11,6 +12,9 @@ from tools.speech_to_text import SpeechToTextError, transcribe_audio
 load_dotenv()
 os.makedirs("data/uploads", exist_ok=True)
 os.makedirs("data/outputs", exist_ok=True)
+
+if "query_text" not in st.session_state:
+    st.session_state.query_text = ""
 
 
 st.set_page_config(page_title="SatQuery AI", page_icon="🛰️", layout="wide")
@@ -32,11 +36,6 @@ with st.sidebar:
     st.divider()
     st.subheader("Voice query")
 
-    spoken_audio = st.audio_input(
-        "Speak your satellite-image question",
-        sample_rate=16000,
-    )
-
     language_options = {
         "Auto-detect": None,
         "Hindi": "hi",
@@ -53,7 +52,43 @@ with st.sidebar:
         options=list(language_options.keys()),
     )
     spoken_language = language_options[selected_language]
-    st.caption("Voice recognition runs locally. The first use downloads its model once.")
+
+    voice_recording = mic_recorder(
+        start_prompt="Start voice query",
+        stop_prompt="Stop and transcribe",
+        just_once=True,
+        use_container_width=True,
+        format="wav",
+        key="satquery_voice_recorder",
+    )
+    st.caption(
+        "Record a short question. The recognised text will appear in the query box. "
+        "Voice recognition runs locally; the first use downloads its model once."
+    )
+
+    if voice_recording and voice_recording.get("bytes"):
+        recording_id = str(hash(voice_recording["bytes"]))
+        if recording_id != st.session_state.get("last_voice_recording_id"):
+            st.session_state.last_voice_recording_id = recording_id
+            with st.spinner("Transcribing your voice query..."):
+                try:
+                    transcript = transcribe_audio(
+                        voice_recording["bytes"], language=spoken_language
+                    )
+                except SpeechToTextError as error:
+                    st.error(str(error))
+                else:
+                    if transcript:
+                        st.session_state.query_text = transcript
+                        st.session_state.voice_transcript = transcript
+                        st.rerun()
+                    else:
+                        st.warning(
+                            "No speech was detected. Please record again or type your question."
+                        )
+
+    if st.session_state.get("voice_transcript"):
+        st.success(f"Recognised query: {st.session_state.voice_transcript}")
 
     st.markdown(
         """
@@ -75,10 +110,11 @@ with st.sidebar:
 query = st.text_area(
     "Ask SatQuery AI",
     placeholder=(
-        "Type a question, or record a voice query in the sidebar. "
+        "Type a question, or use Start voice query in the sidebar. "
         "Example: Is there any visible flood damage?"
     ),
     height=110,
+    key="query_text",
 )
 
 if st.button("Analyze", type="primary", use_container_width=False):
@@ -101,29 +137,6 @@ if st.button("Analyze", type="primary", use_container_width=False):
         paths.append(path)
 
     effective_query = query.strip()
-    transcript = None
-
-    # A recorded voice query takes priority over typed text.
-    if spoken_audio is not None:
-        with st.spinner("Transcribing your voice query..."):
-            try:
-                transcript = transcribe_audio(
-                    spoken_audio.getvalue(),
-                    language=spoken_language,
-                )
-            except SpeechToTextError as error:
-                st.warning(str(error))
-                if not effective_query:
-                    st.info("Type a question above while the local speech model is unavailable.")
-                    st.stop()
-
-        if spoken_audio is not None and not transcript and not effective_query:
-            st.error("No speech was detected. Please try recording again or type your question.")
-            st.stop()
-
-        if transcript:
-            effective_query = transcript
-            st.info(f"Recognised query: {transcript}")
 
     if not effective_query:
         effective_query = (
@@ -174,7 +187,7 @@ if st.button("Analyze", type="primary", use_container_width=False):
 
     report = {
         "query": effective_query,
-        "voice_transcript": transcript,
+        "voice_transcript": st.session_state.get("voice_transcript"),
         "task": result.get("task"),
         "model": result.get("model"),
         "answer": result.get("final_answer"),

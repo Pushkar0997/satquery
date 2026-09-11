@@ -2,6 +2,22 @@
 
 Append-only. **Newest entry at the top.** Every entry: milestone, tasks touched, what didn't get finished, anything noticed but not fixed, and a specific next action.
 
+## 2026-09-11 — Replace the failing browser voice recorder
+
+**Milestone:** voice-query reliability; no numbered task changed.
+
+**Finished**
+- Replaced the failing built-in microphone widget with `streamlit-mic-recorder==0.0.8`, which supplies WAV audio directly to the local Faster-Whisper service.
+- Moved transcription to the end of recording, before analysis, and write the recognised text into the visible **Ask SatQuery AI** field so it can be checked or edited.
+- Added D-011 to record the replacement and why the built-in recorder was not retained.
+
+**Not finished / noticed**
+- A manual browser microphone test remains necessary after restarting Streamlit; the old built-in recorder's browser error was raised before the Python application received audio.
+
+**Next action:** start Streamlit, select a spoken language, use **Start voice query** then **Stop and transcribe**, confirm the recognised text appears in the query field, and select **Analyze**.
+
+---
+
 ## 2026-09-11 — Fix browser-audio transcription root cause
 
 **Milestone:** voice-query reliability; no numbered task changed.
