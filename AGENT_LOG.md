@@ -2,6 +2,23 @@
 
 Append-only. **Newest entry at the top.** Every entry: milestone, tasks touched, what didn't get finished, anything noticed but not fixed, and a specific next action.
 
+## 2026-09-11 — Add local voice queries to the presentation demo
+
+**Milestone:** M2 frontend development workflow; no numbered task changed.
+
+**Finished**
+- Added a voice button and spoken-language selector to the actual `demo/` query composer.
+- Added browser-side WAV capture and a local `demo/voice_server.py` endpoint that passes recordings to the existing Faster-Whisper implementation.
+- The recognised text is placed in the demo query box for review before it enters the existing demo query flow; the pinned `/query` response contract is unchanged.
+- Updated the self-contained demo linker so a rebuilt offline fallback contains the voice UI, while documenting that offline files support typed queries only.
+
+**Not finished / noticed**
+- A browser microphone test is still required. The voice path must be opened through `http://127.0.0.1:5173` using `demo/voice_server.py`, not by double-clicking the offline HTML file.
+
+**Next action:** run `.venv/bin/python demo/voice_server.py`, permit microphone access in the browser, record a short query, confirm its transcript fills the composer, and submit it with **Ask**.
+
+---
+
 ## 2026-09-11 — Replace the failing browser voice recorder
 
 **Milestone:** voice-query reliability; no numbered task changed.

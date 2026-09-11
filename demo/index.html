@@ -116,8 +116,21 @@
           <span class="glyph" aria-hidden="true">&gt;</span>
           <input id="queryInput" type="text" autocomplete="off" spellcheck="false"
                  placeholder="Ask about this area&hellip;" aria-label="Your question">
+          <select id="voiceLanguage" aria-label="Spoken language">
+            <option value="">Auto</option>
+            <option value="en">English</option>
+            <option value="hi">Hindi</option>
+            <option value="mr">Marathi</option>
+            <option value="ta">Tamil</option>
+            <option value="te">Telugu</option>
+            <option value="kn">Kannada</option>
+            <option value="bn">Bengali</option>
+          </select>
+          <button id="voiceBtn" type="button" aria-pressed="false"
+                  title="Record a voice query">Voice</button>
           <button id="askBtn" type="submit">Ask</button>
         </form>
+        <div class="voice-status" id="voiceStatus" role="status" aria-live="polite" hidden></div>
         <div class="composer-foot">
           <span class="rule-dot">&#9679;</span>
           <span>Confidence is a real cosine similarity computed per query. Figures in answers are measured from the rendered scene, never asserted.</span>

@@ -32,6 +32,26 @@ npm run dev                # or: node demo/serve.js
 Then open `http://127.0.0.1:5173`. There are no dependencies — `npm install`
 is not required for either command.
 
+### Voice queries with local Faster-Whisper
+
+The microphone control needs the local Python voice server rather than the
+static Node server. From the repository root, with the project virtual
+environment activated, run:
+
+```
+.venv/bin/python demo/voice_server.py
+```
+
+Open `http://127.0.0.1:5173`, choose a spoken language (or **Auto**), select
+**Voice**, speak the query, then select **Stop**. The browser creates a WAV
+recording and sends it only to the local Faster-Whisper service; its transcript
+is inserted into the query box for review before **Ask**. No Bhashini key,
+cloud speech service or FFmpeg installation is needed for this path.
+
+The offline `satquery-demo.html` fallback remains usable for typed queries, but
+cannot transcribe speech because a standalone HTML file has no local Python
+service to process the recording.
+
 On Windows, double-click `demo/open-local.bat` to start the same server and
 open the correct URL automatically. Do not double-click `demo/index.html`:
 that source entry intentionally imports ES modules, which browsers block from

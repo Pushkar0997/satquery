@@ -24,6 +24,16 @@ Rejected alternatives are the point — without them, the next person re-propose
 
 ---
 
+## D-012 — Local voice bridge for the presentation demo
+
+**Status:** decided (2026-09-11)
+**Decision:** the `demo/` frontend records microphone audio in the browser as WAV and sends it to a same-origin local `/transcribe` endpoint provided by `demo/voice_server.py`. That endpoint calls the existing local Faster-Whisper service and returns only the transcript for insertion into the demo query box.
+**Rationale:** the presentation frontend is static JavaScript, so it cannot import or execute the Python speech model by itself. A small local bridge keeps voice data and inference on the demo laptop, needs no credentials, and does not change the pinned `/query` contract.
+**Rejected:** browser-hosted speech recognition (external browser service and inconsistent availability) and adding a hosted speech API while Bhashini access is unavailable.
+**Revisit if:** the demo frontend is connected to a real backend that can own the same endpoint.
+
+---
+
 ## D-001 — Agri-insurance as the single primary persona for the prototype
 
 **Status:** decided

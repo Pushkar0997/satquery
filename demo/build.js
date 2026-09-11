@@ -36,6 +36,7 @@ const MODULES = [
   'src/ui/trace.js',
   'src/ui/chat.js',
   'src/ui/map.js',
+  'src/voice.js',
   'src/main.js',
 ];
 

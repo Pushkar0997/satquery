@@ -17,6 +17,7 @@ import {
 import { prewarm } from './render.js';
 import { createMap } from './ui/map.js';
 import { createChat } from './ui/chat.js';
+import { createVoiceRecorder } from './voice.js';
 
 const el = {
   scenarios: document.getElementById('scenarios'),
@@ -34,6 +35,9 @@ const el = {
   veilStep: document.getElementById('veilStep'),
   form: document.getElementById('composerForm'),
   input: document.getElementById('queryInput'),
+  voiceBtn: document.getElementById('voiceBtn'),
+  voiceLanguage: document.getElementById('voiceLanguage'),
+  voiceStatus: document.getElementById('voiceStatus'),
   askBtn: document.getElementById('askBtn'),
   chips: document.getElementById('chips'),
   chatTitle: document.getElementById('chatTitle'),
@@ -81,6 +85,16 @@ const chat = createChat({
   },
   onRetry: () => {
     if (app.lastQuery) ask(app.lastQuery);
+  },
+});
+
+const voiceRecorder = createVoiceRecorder({
+  button: el.voiceBtn,
+  language: el.voiceLanguage,
+  status: el.voiceStatus,
+  onTranscript: (transcript) => {
+    el.input.value = transcript;
+    el.input.focus();
   },
 });
 
@@ -287,6 +301,7 @@ async function ask(text) {
 
 function setBusy(busy) {
   el.askBtn.disabled = busy;
+  voiceRecorder.setBusy(busy);
   el.askBtn.textContent = busy ? 'Working' : 'Ask';
   for (const c of el.chips.children) c.disabled = busy;
 }
