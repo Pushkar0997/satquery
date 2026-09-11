@@ -348,14 +348,13 @@ function buildFloodScene(seed) {
         const kind = rnd() < 0.55 ? COVER.CROP_A : COVER.CROP_B;
         stampRect(cover, cx, cy, w, h, ang, kind);
         stampRect(parcel, cx, cy, w, h, ang, id);
-        parcels.push({ id, cx, cy, kind, tone: rnd() });
+        parcels.push({ id, cx, cy, kind, ang, tone: rnd(), rough: rnd() });
         id++;
       }
     }
   }
 
   /* --- settlements ------------------------------------------------------- */
-  const names = ['Kadapra', 'Neelamperoor', 'Cheruthana', 'Mankombu', 'Veeyapuram', 'Thakazhi'];
   const placements = [
     [0.22, 0.20], [0.70, 0.24], [0.30, 0.55],
     [0.63, 0.62], [0.20, 0.84], [0.78, 0.86],
@@ -370,14 +369,14 @@ function buildFloodScene(seed) {
       stampRect(cover, cx + Math.cos(a) * rr, cy + Math.sin(a) * rr,
         2 + rnd() * 3, 2 + rnd() * 3, (rnd() - 0.5) * 0.6, COVER.URBAN);
     }
-    return { id: 'S' + (k + 1), name: names[k], x: cx, y: cy, r };
+    return { id: 'S' + (k + 1), x: cx, y: cy, r };
   });
 
   /* --- roads -------------------------------------------------------------- */
   // A relief hub on high ground plus a link per settlement. Several links cross
   // low ground, which is what makes the connectivity result interesting once
   // the water rises.
-  const hub = { id: 'HUB', name: 'Relief staging point', x: GRID * 0.90, y: GRID * 0.08 };
+  const hub = { id: 'HUB', x: GRID * 0.90, y: GRID * 0.08 };
 
   function quadPath(a, b, mx, my) {
     const pts = [];
@@ -421,22 +420,22 @@ function buildFloodScene(seed) {
   // redundancy is what makes the computed reachability result interesting
   // rather than a foregone conclusion.
   const roadDefs = [
-    ['R1', 'SH-11 Kadapra link', hub, settlements[0], 'state'],
-    ['R2', 'NH-183 river crossing', hub, settlements[1], 'national'],
-    ['R3', 'Cheruthana approach', settlements[0], settlements[2], 'district'],
-    ['R4', 'Mankombu bund road', settlements[1], settlements[3], 'district'],
-    ['R5', 'Veeyapuram causeway', settlements[2], settlements[4], 'district'],
-    ['R6', 'Thakazhi ferry road', settlements[3], settlements[5], 'district'],
-    ['R7', 'Delta ring road', settlements[4], settlements[5], 'district'],
-    ['R8', 'Upland bypass', settlements[1], settlements[2], 'state'],
-    ['R9', 'Kadapra-Neelamperoor link', settlements[0], settlements[1], 'district'],
-    ['R10', 'Eastern trunk road', hub, settlements[5], 'state'],
+    ['R1', hub, settlements[0], 'state'],
+    ['R2', hub, settlements[1], 'national'],
+    ['R3', settlements[0], settlements[2], 'district'],
+    ['R4', settlements[1], settlements[3], 'district'],
+    ['R5', settlements[2], settlements[4], 'district'],
+    ['R6', settlements[3], settlements[5], 'district'],
+    ['R7', settlements[4], settlements[5], 'district'],
+    ['R8', settlements[1], settlements[2], 'state'],
+    ['R9', settlements[0], settlements[1], 'district'],
+    ['R10', hub, settlements[5], 'state'],
   ];
 
   const roads = roadDefs.map((d) => ({
-    id: d[0], name: d[1], cls: d[4],
-    pts: bend(d[2], d[3], d[4]),
-    from: d[2].id, to: d[3].id,
+    id: d[0], cls: d[3],
+    pts: bend(d[1], d[2], d[3]),
+    from: d[1].id, to: d[2].id,
   }));
 
   for (const r of roads) {
@@ -511,20 +510,20 @@ function buildQuakeScene(seed) {
   for (let c = 0; c <= cols; c++) {
     const x = originX + c * cell;
     roads.push({
-      id: 'V' + c, name: 'Street ' + (c + 1), cls: 'street',
+      id: 'V' + c, cls: 'street',
       pts: [[x, originY - cell * 0.4], [x, originY + rows * cell]],
     });
   }
   for (let r = 0; r <= rows; r++) {
     const y = originY + r * cell;
     roads.push({
-      id: 'H' + r, name: 'Cross road ' + (r + 1), cls: 'street',
+      id: 'H' + r, cls: 'street',
       pts: [[originX - cell * 0.4, y], [originX + cols * cell, y]],
     });
   }
   const arterialY = originY + Math.floor(rows / 2) * cell;
   roads.push({
-    id: 'A1', name: 'Arterial highway', cls: 'national',
+    id: 'A1', cls: 'national',
     pts: [[0, arterialY + 6], [GRID * 0.4, arterialY - 4], [GRID - 1, arterialY + 10]],
   });
   for (const r of roads) {
@@ -568,7 +567,7 @@ function buildQuakeScene(seed) {
     waterBefore: new Uint8Array(GRID * GRID),
     waterAfter: new Uint8Array(GRID * GRID),
     severity, blocks, roads, rupture,
-    settlements: [{ id: 'S1', name: 'District town', x: GRID * 0.5, y: GRID * 0.5, r: 20 }],
+    settlements: [{ id: 'S1', x: GRID * 0.5, y: GRID * 0.5, r: 20 }],
     hub: null,
     changeMask,
     cloudBefore: buildCloudMask(seed + 71, 0.03),
@@ -605,7 +604,7 @@ function buildInfraScene(seed) {
 
   // Existing alignment, present at both dates.
   const existing = {
-    id: 'E1', name: 'Existing metalled track', cls: 'district',
+    id: 'E1', cls: 'district',
     pts: Array.from({ length: 26 }, (_, i) => {
       const t = i / 25;
       return [
@@ -619,7 +618,7 @@ function buildInfraScene(seed) {
   // New alignment plus hardstanding, present only at the later date. This is
   // the change the scenario is about.
   const newRoad = {
-    id: 'N1', name: 'New graded alignment', cls: 'new',
+    id: 'N1', cls: 'new',
     pts: Array.from({ length: 30 }, (_, i) => {
       const t = i / 29;
       return [
@@ -629,8 +628,8 @@ function buildInfraScene(seed) {
     }),
   };
   const newSites = [
-    { id: 'P1', name: 'Graded platform', cx: GRID * 0.72, cy: GRID * 0.34, w: 26, h: 18 },
-    { id: 'P2', name: 'Secondary hardstanding', cx: GRID * 0.88, cy: GRID * 0.21, w: 17, h: 13 },
+    { id: 'P1', cx: GRID * 0.72, cy: GRID * 0.34, w: 26, h: 18 },
+    { id: 'P2', cx: GRID * 0.88, cy: GRID * 0.21, w: 17, h: 13 },
   ];
 
   const coverAfter = Uint8Array.from(cover);
@@ -797,7 +796,7 @@ function roadStatus(road, mask) {
   const pct = total ? wet / total : 0;
   const lengthKm = polylineLengthKm(road.pts);
   return {
-    id: road.id, name: road.name, cls: road.cls,
+    id: road.id, cls: road.cls,
     length_km: +lengthKm.toFixed(2),
     submerged_pct: +(pct * 100).toFixed(1),
     submerged_km: +(lengthKm * pct).toFixed(2),
@@ -839,7 +838,7 @@ function reachability(scene, roadStates) {
   );
   const seen = reachableSet(scene, passable);
   return scene.settlements.map((s) => ({
-    id: s.id, name: s.name, reachable: seen.has(s.id),
+    id: s.id, reachable: seen.has(s.id),
   }));
 }
 
@@ -862,13 +861,12 @@ function restorationPriority(scene, roadStates) {
       const after = reachableSet(scene, trial);
       const gained = scene.settlements
         .filter((s) => !base.has(s.id) && after.has(s.id))
-        .map((s) => s.name);
+        .map((s) => s.id);
       return {
         road_id: r.id,
-        road_name: r.name,
         submerged_km: r.submerged_km,
         settlements_reconnected: gained.length,
-        names: gained,
+        settlement_ids: gained,
       };
     })
     .sort((a, b) => b.settlements_reconnected - a.settlements_reconnected
@@ -893,7 +891,7 @@ function settlementInundation(scene, mask) {
       }
     }
     return {
-      id: s.id, name: s.name,
+      id: s.id,
       built_cells: built,
       inundated_pct: built ? +((wet / built) * 100).toFixed(1) : 0,
     };
@@ -934,34 +932,39 @@ export function analyzeScene(scenarioId) {
 
     /* Evidence regions are derived, not placed by hand: the densest window of
      * new water, the worst-inundated settlement, and the point on the worst
-     * road where the centreline first enters the water. */
+     * road where the centreline first enters the water.
+     *
+     * Each carries a bbox, what it refers to, and the numbers behind it — but
+     * no prose. The wording is the mock API's job, so that every string a user
+     * reads lives in one module. */
     const evidence = [];
     if (hot) {
       evidence.push({
-        id: 'E1', kind: 'extent',
-        label: 'Peak inundation window',
-        bbox: hot,
-        note: (+(hot.cells * CELL_KM2).toFixed(2)) + ' km2 of new water in a '
-          + (+((hot.x1 - hot.x0) * GSD_M / 1000).toFixed(1)) + ' km window',
+        id: 'E1', kind: 'extent', bbox: hot,
+        metrics: {
+          km2: +(hot.cells * CELL_KM2).toFixed(2),
+          window_km: +((hot.x1 - hot.x0) * GSD_M / 1000).toFixed(1),
+        },
       });
     }
     if (worstSettlement && worstSettlement.inundated_pct > 0) {
       const s = scene.settlements.find((x) => x.id === worstSettlement.id);
       evidence.push({
-        id: 'E2', kind: 'settlement',
-        label: worstSettlement.name + ' built-up area',
+        id: 'E2', kind: 'settlement', ref: worstSettlement.id,
         bbox: boxAround(s.x, s.y, s.r * 1.9),
-        note: worstSettlement.inundated_pct + '% of mapped built-up cells under water',
+        metrics: { inundated_pct: worstSettlement.inundated_pct },
       });
     }
     if (worstRoad && worstRoad.breach_at) {
       const road = scene.roads.find((r) => r.id === worstRoad.id);
       const p = pointAt(road.pts, worstRoad.breach_at[0]);
       evidence.push({
-        id: 'E3', kind: 'breach',
-        label: worstRoad.name + ' — first breach',
+        id: 'E3', kind: 'breach', ref: worstRoad.id,
         bbox: boxAround(p[0], p[1], 26),
-        note: worstRoad.submerged_km + ' km of ' + worstRoad.length_km + ' km submerged',
+        metrics: {
+          submerged_km: worstRoad.submerged_km,
+          length_km: worstRoad.length_km,
+        },
       });
     }
 
@@ -1024,18 +1027,15 @@ export function analyzeScene(scenarioId) {
     const evidence = [];
     if (hot) {
       evidence.push({
-        id: 'E1', kind: 'extent',
-        label: 'Peak damage concentration',
-        bbox: hot,
-        note: (+(hot.cells * CELL_KM2).toFixed(2)) + ' km2 classed severe within the window',
+        id: 'E1', kind: 'damage_extent', bbox: hot,
+        metrics: { km2: +(hot.cells * CELL_KM2).toFixed(2) },
       });
     }
     if (worstBlock) {
       evidence.push({
-        id: 'E2', kind: 'block',
-        label: 'Worst-affected block ' + worstBlock.id,
+        id: 'E2', kind: 'block', ref: worstBlock.id,
         bbox: boxAround(worstBlock.cx, worstBlock.cy, Math.max(worstBlock.w, worstBlock.h)),
-        note: 'mean severity ' + worstBlock.severity.toFixed(2) + ' across the block footprint',
+        metrics: { severity: +worstBlock.severity.toFixed(2) },
       });
     }
 
@@ -1052,7 +1052,7 @@ export function analyzeScene(scenarioId) {
       worst_blocks: severeBlocks.slice().sort((a, b) => b.severity - a.severity).slice(0, 3)
         .map((b) => ({ id: b.id, severity: +b.severity.toFixed(3) })),
       arterial_affected_pct: arterialTotal ? +((arterialAffected / arterialTotal) * 100).toFixed(1) : 0,
-      arterial_name: arterial.name,
+      arterial_id: arterial.id,
       evidence,
       full_extent: bboxOfMask(scene.changeMask),
     };
@@ -1066,16 +1066,14 @@ export function analyzeScene(scenarioId) {
     }
     const evidence = [{
       id: 'E1', kind: 'alignment',
-      label: 'New alignment corridor',
       bbox: bboxOfMask(scene.changeMask, 1),
-      note: (+polylineLengthKm(scene.newRoad.pts).toFixed(2)) + ' km of new graded surface',
+      metrics: { km: +polylineLengthKm(scene.newRoad.pts).toFixed(2) },
     }];
     for (const s of scene.newSites) {
       evidence.push({
-        id: s.id, kind: 'site',
-        label: s.name,
+        id: s.id, kind: 'site', ref: s.id,
         bbox: boxAround(s.cx, s.cy, Math.max(s.w, s.h) * 0.9),
-        note: (+((s.w * s.h) * CELL_HA).toFixed(1)) + ' ha of cleared hardstanding',
+        metrics: { area_ha: +((s.w * s.h) * CELL_HA).toFixed(1) },
       });
     }
 
@@ -1088,7 +1086,7 @@ export function analyzeScene(scenarioId) {
       new_alignment_km: +polylineLengthKm(scene.newRoad.pts).toFixed(2),
       vegetation_cleared_ha: +(forestLost * CELL_HA).toFixed(1),
       new_sites: scene.newSites.map((s) => ({
-        id: s.id, name: s.name, area_ha: +((s.w * s.h) * CELL_HA).toFixed(1),
+        id: s.id, area_ha: +((s.w * s.h) * CELL_HA).toFixed(1),
       })),
       evidence,
       full_extent: bboxOfMask(scene.changeMask),

@@ -290,6 +290,8 @@ button { font-family: inherit; color: inherit; }
 }
 .stage.dragging { cursor: grabbing; }
 .stage.drawing { cursor: crosshair; }
+/* While comparing, the whole frame is the swipe control. */
+.stage.comparing { cursor: ew-resize; }
 
 .layer {
   position: absolute;
@@ -537,7 +539,7 @@ button { font-family: inherit; color: inherit; }
 .map-footer {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 15px;
   padding: 7px 12px;
   border-top: 1px solid var(--rule);
   background: var(--paper-2);
@@ -602,6 +604,8 @@ button { font-family: inherit; color: inherit; }
   border-radius: 5px;
   border: 3px solid var(--paper);
 }
+
+.messages > * { flex: 0 0 auto; }
 
 .msg { animation: rise .3s var(--ease) both; }
 @keyframes rise {
@@ -811,6 +815,7 @@ button { font-family: inherit; color: inherit; }
   min-width: 40px;
 }
 .conf-fill {
+  display: block;
   height: 100%;
   width: 0;
   border-radius: 2px;

@@ -19,13 +19,15 @@
 
 import { buildScene, GRID, COVER } from './scene.js';
 
-export const LAYERS = [
-  { id: 'optical', name: 'Optical', hint: 'Sentinel-2 true colour' },
-  { id: 'sar', name: 'SAR', hint: 'Sentinel-1 VV backscatter' },
-  { id: 'water', name: 'Water index', hint: 'NDWI / SAR water mask' },
-];
+/* Layer ids only. What they are called on screen is display copy, so it lives
+ * with the rest of the scripted content in api/mock.js — see LAYER_LABELS. */
+export const LAYER_IDS = ['optical', 'sar', 'water'];
 
-export const RENDER_PX = 1024;
+/* Source resolution for every layer. 384 grid cells across this many pixels
+ * leaves enough headroom that flying to an evidence region stays near native
+ * resolution instead of upscaling into mush. Raising it further costs render
+ * time and memory for detail the 384-cell scene model does not contain. */
+export const RENDER_PX = 1280;
 
 /* A small tile of hash noise, sampled with wrap. Calling fBm a million times
  * per layer would be the one genuinely slow thing in this app; a repeating
@@ -51,6 +53,20 @@ function softNoise(x, y) {
 }
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+
+/* Cultivated land has rows, and rows are what make a field read as a field
+ * rather than as a filled rectangle. Sampled in fractional grid coordinates so
+ * the texture survives being zoomed into — the scene model is only 384 cells
+ * across, so without this the imagery falls apart above about 2x. */
+function furrowAt(parcel, gxf, gyf) {
+  if (!parcel) return 0;
+  const ca = Math.cos(parcel.ang), sa = Math.sin(parcel.ang);
+  const along = gxf * ca + gyf * sa;
+  const across = -gxf * sa + gyf * ca;
+  // Two frequencies: the drill rows, and a slower banding across the field.
+  return Math.sin(across * 2.7 + parcel.tone * 6.3) * 0.62
+    + Math.sin(along * 0.55 + parcel.rough * 5.1) * 0.38;
+}
 
 /* Hillshade from the elevation grid. Vertical exaggeration is large on purpose:
  * across 12.8 km the real relief here would be almost invisible, and terrain
@@ -136,9 +152,11 @@ function drawOptical(scene, view, px) {
   const { cover, water, baselineWater, cloud } = view;
 
   for (let py = 0; py < px; py++) {
-    const gy = Math.min(GRID - 1, (py * scale) | 0);
+    const gyf = py * scale;
+    const gy = Math.min(GRID - 1, gyf | 0);
     for (let pxi = 0; pxi < px; pxi++) {
-      const gx = Math.min(GRID - 1, (pxi * scale) | 0);
+      const gxf = pxi * scale;
+      const gx = Math.min(GRID - 1, gxf | 0);
       const gi = gy * GRID + gx;
       const o = (py * px + pxi) * 4;
 
@@ -170,12 +188,13 @@ function drawOptical(scene, view, px) {
         const base = OPTICAL[c] || OPTICAL[COVER.SOIL];
         // Per-parcel tone so neighbouring fields differ the way real ones do.
         const pid = scene.parcel ? scene.parcel[gi] : -1;
-        const parcelTone = pid >= 0 && scene.parcels[pid]
-          ? (scene.parcels[pid].tone - 0.5) * 0.30 : 0;
+        const parcel = pid >= 0 && scene.parcels[pid] ? scene.parcels[pid] : null;
+        const parcelTone = parcel ? (parcel.tone - 0.5) * 0.30 : 0;
+        const furrow = furrowAt(parcel, gxf, gyf) * 0.055;
         const grain = (softNoise(pxi, py) - 0.5) * 0.13
           + (tileNoise(pxi, py) - 0.5) * 0.07;
         const shade = hillshadeAt(elev, gx, gy, 26);
-        const k = (0.72 + shade * 0.52) * (1 + parcelTone + grain);
+        const k = (0.72 + shade * 0.52) * (1 + parcelTone + furrow + grain);
         r = base[0] * k;
         g = base[1] * k;
         b = base[2] * k;
@@ -227,15 +246,30 @@ function drawSar(scene, view, px) {
   const { cover, water } = view;
 
   for (let py = 0; py < px; py++) {
-    const gy = Math.min(GRID - 1, (py * scale) | 0);
+    const gyf = py * scale;
+    const gy = Math.min(GRID - 1, gyf | 0);
     for (let pxi = 0; pxi < px; pxi++) {
-      const gx = Math.min(GRID - 1, (pxi * scale) | 0);
+      const gxf = pxi * scale;
+      const gx = Math.min(GRID - 1, gxf | 0);
       const gi = gy * GRID + gx;
       const o = (py * px + pxi) * 4;
 
-      let sigma = water && water[gi]
+      const wet = water && water[gi];
+      let sigma = wet
         ? BACKSCATTER[COVER.WATER]
         : (BACKSCATTER[cover[gi]] ?? BACKSCATTER[COVER.SOIL]);
+
+      // Neighbouring fields differ in radar because their moisture and crop
+      // stage differ, not only because of speckle. Without this, adjacent
+      // parcels are identical grey and the scene looks like flat blocks.
+      if (!wet && scene.parcel) {
+        const pid = scene.parcel[gi];
+        const parcel = pid >= 0 && scene.parcels[pid] ? scene.parcels[pid] : null;
+        if (parcel) {
+          sigma *= 0.74 + parcel.tone * 0.56;
+          sigma *= 1 + furrowAt(parcel, gxf, gyf) * 0.16;
+        }
+      }
 
       // Terrain modulation in the range direction: slopes tilted towards the
       // sensor brighten, slopes tilted away darken. This is what gives real SAR
@@ -280,9 +314,11 @@ function drawSar(scene, view, px) {
 export function waterMethodFor(scenarioId, date) {
   const scene = buildScene(scenarioId);
   const cloud = date === 'after' ? scene.cloudAfter : scene.cloudBefore;
+  // The decision is computed from the measured cloud fraction; how it is worded
+  // is api/mock.js's business.
   return cloud.fraction > 0.25
-    ? { method: 'sar_mask', label: 'SAR water mask · Sentinel-1 VV', reason: 'optical index unusable under cloud' }
-    : { method: 'ndwi', label: 'NDWI · (green − NIR) / (green + NIR)', reason: 'optical pass usable' };
+    ? { method: 'sar_mask', cloud_fraction: cloud.fraction }
+    : { method: 'ndwi', cloud_fraction: cloud.fraction };
 }
 
 function drawWater(scene, view, px, method) {
@@ -407,7 +443,7 @@ export function renderThumb(scenarioId, layer, date, bbox, outPx = 208) {
  */
 export async function prewarm(scenarioId, onProgress) {
   const combos = [];
-  for (const l of LAYERS) for (const date of ['before', 'after']) combos.push([l.id, date]);
+  for (const id of LAYER_IDS) for (const date of ['before', 'after']) combos.push([id, date]);
   for (let i = 0; i < combos.length; i++) {
     renderLayer(scenarioId, combos[i][0], combos[i][1]);
     if (onProgress) onProgress((i + 1) / combos.length, combos[i]);

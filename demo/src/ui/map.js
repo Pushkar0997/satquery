@@ -12,7 +12,8 @@
  * ------------------------------------------------------------------------- */
 
 import { buildScene, analyzeScene, GRID, GSD_M } from '../scene.js';
-import { renderLayer, LAYERS, waterMethodFor } from '../render.js';
+import { renderLayer } from '../render.js';
+import { placeName, LAYERS, waterMethod } from '../api/mock.js';
 
 const MIN_ZOOM = 0.92;
 const MAX_ZOOM = 9;
@@ -147,6 +148,7 @@ export function createMap(opts) {
 
   function applyCompare() {
     const on = state.compare;
+    el.stage.classList.toggle('comparing', on);
     el.handle.hidden = !on;
     el.tagL.hidden = !on;
     el.tagR.hidden = !on;
@@ -253,6 +255,7 @@ export function createMap(opts) {
       const [sx, sy] = project(s.x, s.y);
       if (sx < -60 || sy < -60 || sx > W + 60 || sy > H + 60) continue;
       const cut = state.cutOff.has(s.id);
+      const sName = placeName(state.scenario, s.id);
 
       octx.beginPath();
       octx.arc(sx, sy, 4.5, 0, Math.PI * 2);
@@ -273,7 +276,7 @@ export function createMap(opts) {
         octx.setLineDash([]);
       }
 
-      label(sx + 11, sy + 3.5, cut ? s.name + '  · CUT OFF' : s.name,
+      label(sx + 11, sy + 3.5, cut ? sName + '  · CUT OFF' : sName,
         cut ? '#FFD9CF' : '#E6E0D0', cut);
     }
 
@@ -288,7 +291,7 @@ export function createMap(opts) {
       octx.fillRect(-5, -5, 10, 10);
       octx.strokeRect(-5, -5, 10, 10);
       octx.restore();
-      label(sx + 12, sy + 3.5, 'Relief staging', '#B9F0F4', false);
+      label(sx + 12, sy + 3.5, placeName(state.scenario, scene.hub.id), '#B9F0F4', false);
     }
 
     octx.restore();
@@ -441,6 +444,7 @@ export function createMap(opts) {
     const counts = { open: 0, restricted: 0, impassable: 0 };
     for (const st of state.roadStates.values()) counts[st.status]++;
     el.legend.hidden = false;
+    el.legend.style.top = state.compare ? '44px' : '12px';
     el.legend.innerHTML = '<h4>Road status</h4>' + Object.entries(STATUS_STYLE)
       .map(([k, s]) => `<div class="row"><span class="swatch${s.dash.length ? ' dashed' : ''}" style="${s.dash.length ? 'color:' + s.color : 'background:' + s.color}"></span>${s.label} · ${counts[k]}</div>`)
       .join('') + '<div class="row" style="margin-top:4px;opacity:.75">&times; first breach point</div>';
@@ -449,9 +453,12 @@ export function createMap(opts) {
   /* ---- footer ------------------------------------------------------------ */
 
   function updateFooter() {
+    // The resize observer fires as soon as the stage is observed, which is
+    // before any scene has been loaded. Nothing to report until then.
+    if (!state.measures) return;
     const sc = opts.getScenarioMeta(state.scenario);
     const layerMeta = LAYERS.find((l) => l.id === state.layer);
-    const wm = waterMethodFor(state.scenario, state.date);
+    const wm = waterMethod(state.scenario, state.date);
     const dateLabel = state.date === 'after' ? sc.after_label : sc.before_label;
     const hint = state.layer === 'water' ? wm.label : layerMeta.hint;
     const cloud = state.date === 'after'
@@ -464,7 +471,6 @@ export function createMap(opts) {
       kv('CLOUD', cloud + '%'),
       kv('GSD', GSD_M + ' m'),
       kv('EXTENT', (GRID * GSD_M / 1000).toFixed(1) + ' km'),
-      '<span class="spacer"></span>',
       kv('ZOOM', state.view.z.toFixed(2) + '×'),
     ].join('');
   }
@@ -515,12 +521,18 @@ export function createMap(opts) {
     }
   }
 
+  /* Capped separately from MAX_ZOOM: the user may zoom in as far as they like,
+   * but an automatic flight should not park the view past the point where the
+   * imagery is being upscaled rather than resolved. A wider frame also reads
+   * better anyway — you can see the road and the water either side of it. */
+  const MAX_FLIGHT_ZOOM = 3.4;
+
   function zoomToBbox(bbox, pad = 0.62) {
     const bw = Math.max(8, Math.max(bbox.x1 - bbox.x0, bbox.y1 - bbox.y0));
     flyTo({
       cx: (bbox.x0 + bbox.x1) / 2,
       cy: (bbox.y0 + bbox.y1) / 2,
-      z: clamp((GRID * pad) / bw, MIN_ZOOM, MAX_ZOOM),
+      z: clamp((GRID * pad) / bw, MIN_ZOOM, MAX_FLIGHT_ZOOM),
     });
   }
 
@@ -539,6 +551,7 @@ export function createMap(opts) {
   /* ---- interaction ------------------------------------------------------- */
 
   let drag = null;
+  let splitFromStage = false;
 
   el.stage.addEventListener('pointerdown', (e) => {
     if (e.target === el.handle || el.handle.contains(e.target)) return;
@@ -550,6 +563,12 @@ export function createMap(opts) {
       const [gx, gy] = unproject(sx, sy);
       state.drawing = { x0: gx, y0: gy, x1: gx, y1: gy };
       el.stage.classList.add('drawing');
+    } else if (state.compare) {
+      // While comparing, the whole frame is the swipe control. Making the
+      // presenter find a 2px handle mid-demo is the wrong trade — panning is
+      // still available on the wheel and the zoom buttons.
+      splitFromStage = true;
+      setSplitFromClientX(e.clientX);
     } else {
       drag = { sx, sy, cx: state.view.cx, cy: state.view.cy };
       el.stage.classList.add('dragging');
@@ -565,6 +584,10 @@ export function createMap(opts) {
       state.drawing.x1 = clamp(gx, 0, GRID);
       state.drawing.y1 = clamp(gy, 0, GRID);
       invalidate();
+      return;
+    }
+    if (splitFromStage) {
+      setSplitFromClientX(e.clientX);
       return;
     }
     if (!drag) return;
@@ -593,6 +616,7 @@ export function createMap(opts) {
       invalidate();
     }
     drag = null;
+    splitFromStage = false;
     el.stage.classList.remove('dragging');
     if (e && e.pointerId != null && el.stage.hasPointerCapture(e.pointerId)) {
       el.stage.releasePointerCapture(e.pointerId);
@@ -698,6 +722,7 @@ export function createMap(opts) {
   function setCompare(on) {
     state.compare = on;
     applyCompare();
+    updateLegend();
     if (opts.onChange) opts.onChange(getState());
   }
 
@@ -751,7 +776,11 @@ export function createMap(opts) {
     if (!d) return;
     if (d.layer && d.layer !== state.layer) setLayer(d.layer);
     if (d.date && d.date !== state.date) setDate(d.date);
-    setCompare(!!d.compare);
+    // Deliberately does not act on d.compare. The directive's compare flag is
+    // surfaced as a "Compare passes" action instead: an answer arriving should
+    // land on one clean frame, not silently split the view under the evidence
+    // box it just drew.
+    setCompare(false);
     if (opts.onChange) opts.onChange(getState());
   }
 

@@ -33,8 +33,8 @@
  * steps. That is the part a real backend replaces.
  * ------------------------------------------------------------------------- */
 
-import { analyzeScene, buildScene, GRID, AOI_KM, GSD_M } from '../scene.js';
-import { renderThumb, waterMethodFor } from '../render.js';
+import { analyzeScene, GRID, AOI_KM, GSD_M } from '../scene.js';
+import { renderThumb, waterMethodFor, LAYER_IDS } from '../render.js';
 
 export const IS_MOCK = true;
 export const CONTRACT_VERSION = '1.1-demo';
@@ -123,6 +123,136 @@ export const SCENARIOS = [
 
 export function getScenario(id) {
   return SCENARIOS.find((s) => s.id === id) || SCENARIOS[0];
+}
+
+/* ---- display copy for the imagery layers ---------------------------------
+ * render.js knows how to draw each layer; what each one is called, and which
+ * instrument it stands for, is scripted content and belongs here. In a real
+ * build these come from the tile metadata for the AOI. */
+
+const LAYER_LABELS = {
+  optical: { name: 'Optical', hint: 'Sentinel-2 true colour' },
+  sar: { name: 'SAR', hint: 'Sentinel-1 VV backscatter' },
+  water: { name: 'Water index', hint: 'NDWI / SAR water mask' },
+};
+
+const WATER_METHOD_LABELS = {
+  sar_mask: {
+    label: 'SAR water mask · Sentinel-1 VV',
+    reason: 'optical index unusable under cloud',
+  },
+  ndwi: {
+    label: 'NDWI · (green − NIR) / (green + NIR)',
+    reason: 'optical pass usable',
+  },
+};
+
+/** The imagery layers, in toolbar order, with their display names. */
+export const LAYERS = LAYER_IDS.map((id) => ({ id, ...LAYER_LABELS[id] }));
+
+/**
+ * Which index actually answered the water question for this pass, and why.
+ * The choice is measured in render.js from the cloud mask; the wording is here.
+ */
+export function waterMethod(scenarioId, date) {
+  const m = waterMethodFor(scenarioId, date);
+  return { ...m, ...WATER_METHOD_LABELS[m.method] };
+}
+
+/* ---- gazetteer -----------------------------------------------------------
+ * Every human-readable place name in the app. scene.js generates geometry with
+ * opaque ids (S1, R4, HUB) and measures it; the names those ids are displayed
+ * under are scripted content, so they live here with the rest of it. A real
+ * build resolves these from a gazetteer or from the tile metadata instead.
+ */
+
+export const PLACES = {
+  flood: {
+    HUB: 'Relief staging point',
+    S1: 'Kadapra', S2: 'Neelamperoor', S3: 'Cheruthana',
+    S4: 'Mankombu', S5: 'Veeyapuram', S6: 'Thakazhi',
+    R1: 'SH-11 Kadapra link',
+    R2: 'NH-183 river crossing',
+    R3: 'Cheruthana approach',
+    R4: 'Mankombu bund road',
+    R5: 'Veeyapuram causeway',
+    R6: 'Thakazhi ferry road',
+    R7: 'Delta ring road',
+    R8: 'Upland bypass',
+    R9: 'Kadapra-Neelamperoor link',
+    R10: 'Eastern trunk road',
+  },
+  quake: {
+    S1: 'District town',
+    A1: 'Arterial highway',
+  },
+  infra: {
+    E1: 'Existing metalled track',
+    N1: 'New graded alignment',
+    P1: 'Graded platform',
+    P2: 'Secondary hardstanding',
+  },
+};
+
+/** Display name for a scene feature id, falling back to the id itself. */
+export function placeName(scenarioId, id) {
+  const table = PLACES[scenarioId];
+  return (table && table[id]) || id;
+}
+
+function names(scenarioId, ids) {
+  return (ids || []).map((id) => placeName(scenarioId, id));
+}
+
+/* Evidence regions arrive from scene.js as a bbox, a reference and the numbers
+ * behind them. The sentence describing one is written here. */
+function describeEvidence(scenarioId, ev) {
+  const m = ev.metrics || {};
+  const of = (id) => placeName(scenarioId, id);
+  switch (ev.kind) {
+    case 'extent':
+      return {
+        label: 'Peak inundation window',
+        note: `${m.km2} km² of new water inside a ${m.window_km} km window`,
+      };
+    case 'settlement':
+      return {
+        label: of(ev.ref) + ' built-up area',
+        note: `${m.inundated_pct}% of mapped built-up cells under water`,
+      };
+    case 'breach':
+      return {
+        label: of(ev.ref) + ' — first breach',
+        note: `${m.submerged_km} km of ${m.length_km} km submerged`,
+      };
+    case 'damage_extent':
+      return {
+        label: 'Peak damage concentration',
+        note: `${m.km2} km² classed severe within the window`,
+      };
+    case 'block':
+      return {
+        label: 'Worst-affected block ' + ev.ref,
+        note: `mean severity ${m.severity} across the block footprint`,
+      };
+    case 'alignment':
+      return {
+        label: 'New alignment corridor',
+        note: `${m.km} km of new graded surface`,
+      };
+    case 'site':
+      return {
+        label: of(ev.ref),
+        note: `${m.area_ha} ha of cleared hardstanding`,
+      };
+    default:
+      return { label: ev.id, note: '' };
+  }
+}
+
+/** Attach display strings to the measured evidence regions. */
+function dressEvidence(scenarioId, list) {
+  return (list || []).map((ev) => ({ ...ev, ...describeEvidence(scenarioId, ev) }));
 }
 
 /* ---- tile index ----------------------------------------------------------
@@ -288,17 +418,19 @@ const SYNONYMS = {
 
 /* Place names inside each AOI are part of the searchable vocabulary — an
  * analyst asking "can we still get to Mankombu" is asking about access to a
- * village, and the index should know that. Pulled from the scenes themselves so
- * the two can never drift apart. */
-for (const sc of SCENARIOS) {
-  const scene = buildScene(sc.id);
-  for (const s of scene.settlements || []) {
-    SYNONYMS[s.name.toLowerCase()] = 'village';
-  }
-  if (scene.hub) SYNONYMS[scene.hub.name.toLowerCase().split(' ')[0]] = 'relief';
-  for (const r of scene.roads || []) {
-    for (const w of r.name.toLowerCase().split(/[\s-]+/)) {
-      if (w.length > 3 && !SYNONYMS[w]) SYNONYMS[w] = 'road';
+ * village, and the index should know that. Derived from the gazetteer above, so
+ * the names the map labels and the names the index matches cannot drift. */
+for (const [scenarioId, table] of Object.entries(PLACES)) {
+  for (const [id, name] of Object.entries(table)) {
+    const canonical = id === 'HUB' ? 'relief'
+      : /^S\d+$/.test(id) ? 'village'
+        : /^[RAENVH]\d+$/.test(id) ? 'road'
+          : /^P\d+$/.test(id) ? 'alignment' : null;
+    if (!canonical) continue;
+    // Index the whole name and each distinctive word in it, so both "Mankombu"
+    // and "Mankombu bund road" resolve.
+    for (const w of [name.toLowerCase(), ...name.toLowerCase().split(/[\s-]+/)]) {
+      if (w.length > 3 && !SYNONYMS[w]) SYNONYMS[w] = canonical;
     }
   }
 }
@@ -447,6 +579,7 @@ function composeFlood(intent, m, sc) {
   const cutOff = m.reachability.filter((r) => !r.reachable);
   const reach = m.reachability.filter((r) => r.reachable);
   const top = m.restoration_priority && m.restoration_priority[0];
+  const nameOf = (id) => placeName('flood', id);
   const push = (field, value, method) => ({ field, value, method });
 
   if (intent === 'sensor_rationale') {
@@ -471,15 +604,15 @@ function composeFlood(intent, m, sc) {
     return {
       answer:
         `Of ${m.roads_total} mapped links in the AOI, ${m.roads_impassable} are impassable and ${m.roads_restricted} restricted; ${m.roads_open} are clear. `
-        + `The worst is ${worst.name}, with ${worst.submerged_km} km of its ${worst.length_km} km submerged (${pct(worst.submerged_pct)}). `
+        + `The worst is ${nameOf(worst.id)}, with ${worst.submerged_km} km of its ${worst.length_km} km submerged (${pct(worst.submerged_pct)}). `
         + (top
-          ? `Restoring ${top.road_name} would reconnect ${top.settlements_reconnected} settlement${top.settlements_reconnected === 1 ? '' : 's'} `
-            + `(${top.names.join(', ')}) and has ${top.submerged_km} km under water — the shortest bridging task of the options that reconnect anything.`
+          ? `Restoring ${nameOf(top.road_id)} would reconnect ${top.settlements_reconnected} settlement${top.settlements_reconnected === 1 ? '' : 's'} `
+            + `(${names('flood', top.settlement_ids).join(', ')}) and has ${top.submerged_km} km under water — the shortest bridging task of the options that reconnect anything.`
           : `No single link restoration reconnects an additional settlement.`),
       provenance: [
         push('roads_impassable', m.roads_impassable, 'centreline sampled at ~33 m; link classed impassable above 8% of samples inside the SAR water mask'),
         push('worst_road.submerged_km', worst.submerged_km, 'submerged sample fraction × polyline length'),
-        top ? push('restoration_priority[0]', top.road_name, 'BFS from the relief staging point re-run once per cut link, counting settlements regained') : null,
+        top ? push('restoration_priority[0]', nameOf(top.road_id), 'BFS from the relief staging point re-run once per cut link, counting settlements regained') : null,
       ].filter(Boolean),
       map: { layer: 'sar', date: 'after', compare: false, evidence: 'E3' },
       headline: `${m.roads_impassable} of ${m.roads_total} links impassable`,
@@ -490,15 +623,15 @@ function composeFlood(intent, m, sc) {
     const worst = m.worst_settlement;
     return {
       answer:
-        `${cutOff.length} of ${m.reachability.length} settlements have no passable road route to the relief staging point: ${cutOff.map((c) => c.name).join(', ')}. `
-        + `${reach.length === 1 ? reach[0].name + ' is' : reach.map((r) => r.name).join(', ') + ' are'} still reachable. `
+        `${cutOff.length} of ${m.reachability.length} settlements have no passable road route to the relief staging point: ${names('flood', cutOff.map((c) => c.id)).join(', ')}. `
+        + `${reach.length === 1 ? nameOf(reach[0].id) + ' is' : names('flood', reach.map((r) => r.id)).join(', ') + ' are'} still reachable. `
         + (worst && worst.inundated_pct > 0
-          ? `${worst.name} is also directly inundated — ${pct(worst.inundated_pct)} of its mapped built-up cells are under water. `
+          ? `${nameOf(worst.id)} is also directly inundated — ${pct(worst.inundated_pct)} of its mapped built-up cells are under water. `
           : `No settlement footprint is itself substantially inundated; the problem is access rather than immersion. `)
         + `Isolation here is a routing result, not an observation: it is what the road graph gives once the cut links are removed.`,
       provenance: [
         push('cut_off_count', cutOff.length, 'breadth-first search from the relief staging point over links classed passable'),
-        worst ? push('worst_settlement.inundated_pct', worst.inundated_pct, 'built-up cells inside the settlement footprint intersected with the water mask') : null,
+        worst ? push(nameOf(worst.id) + '.inundated_pct', worst.inundated_pct, 'built-up cells inside the settlement footprint intersected with the water mask') : null,
       ].filter(Boolean),
       map: { layer: 'sar', date: 'after', compare: false, evidence: 'E2' },
       headline: `${cutOff.length} settlements without road access`,
@@ -528,7 +661,7 @@ function composeQuake(intent, m) {
   if (intent === 'road_access') {
     return {
       answer:
-        `${pct(m.arterial_affected_pct)} of the ${m.arterial_name} centreline runs through a corridor with severe structural damage on at least one side, `
+        `${pct(m.arterial_affected_pct)} of the ${placeName('quake', m.arterial_id)} centreline runs through a corridor with severe structural damage on at least one side, `
         + `so it should be treated as obstructed rather than closed — debris, not collapse of the carriageway itself. `
         + `Damage severity is measured over buildings; the road is inferred from what is standing beside it.`,
       provenance: [
@@ -555,7 +688,7 @@ function composeQuake(intent, m) {
 }
 
 function composeInfra(intent, m) {
-  const sites = m.new_sites.map((s) => `${s.name} (${s.area_ha} ha)`).join(' and ');
+  const sites = m.new_sites.map((s) => `${placeName('infra', s.id)} (${s.area_ha} ha)`).join(' and ');
   return {
     answer:
       `${m.new_surface_ha} ha of new surface appears between the two passes, none of it present in the baseline. `
@@ -685,7 +818,7 @@ export async function query(text, ctx = {}) {
   }
 
   // Resolve the cited evidence region, if the answer names one.
-  const evidence = (measures.evidence || []);
+  const evidence = dressEvidence(scenarioId, measures.evidence);
   const cited = composed.map && composed.map.evidence
     ? evidence.filter((e) => e.id === composed.map.evidence)
     : [];
@@ -729,7 +862,7 @@ export async function query(text, ctx = {}) {
     sensor: best.tile.sensor,
     acquired: best.tile.acquired,
     acquired_pretty: prettyDate(best.tile.acquired),
-    water_method: waterMethodFor(scenarioId, thumbDate),
+    water_method: waterMethod(scenarioId, thumbDate),
     trace,
     evidence: cited.length ? cited : evidence.slice(0, 1),
     all_evidence: evidence,
@@ -744,7 +877,7 @@ export async function query(text, ctx = {}) {
       sensor: r.tile.sensor,
       similarity: +r.similarity.toFixed(4),
     })),
-    latency_ms: Math.round(elapsed),
+    latency_ms: elapsed < 1 ? +elapsed.toFixed(2) : Math.round(elapsed),
     contract_version: CONTRACT_VERSION,
     is_mock: true,
   };

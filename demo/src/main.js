@@ -12,9 +12,9 @@
 
 import {
   queryStream, SCENARIOS, getScenario, suggestions, indexStats,
-  CONTRACT_VERSION, IS_MOCK,
+  LAYERS, CONTRACT_VERSION, IS_MOCK,
 } from './api/mock.js';
-import { LAYERS, prewarm } from './render.js';
+import { prewarm } from './render.js';
 import { createMap } from './ui/map.js';
 import { createChat } from './ui/chat.js';
 

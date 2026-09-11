@@ -79,7 +79,7 @@ export function createTrace(host, { open = true } = {}) {
       dot.style.animation = 'none';
       dot.style.background = response.answerable ? 'var(--ok)' : 'var(--alert)';
       const rerouted = response.trace.some((s) => s.status === 'reroute');
-      summary.textContent = `${count} steps · ${response.latency_ms} ms`
+      summary.textContent = `${count} steps · ${response.latency_ms} ms compute`
         + (rerouted ? ' · rerouted to SAR' : '');
       if (!STATUS_NOTE.reroute || !rerouted) {
         note.textContent = 'Simulated pipeline trace · demo build';
