@@ -4,6 +4,16 @@ Rejected alternatives are the point — without them, the next person re-propose
 
 ---
 
+## D-010 — Local Faster-Whisper for voice queries during the prototype
+
+**Status:** decided (2026-09-11)
+**Decision:** use the local `faster-whisper` `small` model to transcribe microphone queries in the Streamlit prototype. The recognised text is passed into the existing query path; no Bhashini credential or hosted speech API is required.
+**Rationale:** Bhashini integration approval is not available within the demo timeline. Local inference avoids a credential, quota and live-network dependency after the one-time public model download, while preserving the existing evidence-grounded image-analysis flow.
+**Rejected:** blocking the demo on a hosted government STT credential. Bhashini remains the preferred future provider when credentials are available.
+**Revisit if:** Bhashini access is approved, or local transcription quality for the demo languages is insufficient.
+
+---
+
 ## D-001 — Agri-insurance as the single primary persona for the prototype
 
 **Status:** decided

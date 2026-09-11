@@ -1,4 +1,7 @@
-.env
+.env*
+!.env.example
+.venv/
+:memory:.ses
 .idea/
 .mcp.json
 __pycache__/

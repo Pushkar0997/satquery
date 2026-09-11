@@ -2,6 +2,42 @@
 
 Append-only. **Newest entry at the top.** Every entry: milestone, tasks touched, what didn't get finished, anything noticed but not fixed, and a specific next action.
 
+## 2026-09-11 — Fix browser-audio transcription root cause
+
+**Milestone:** voice-query reliability; no numbered task changed.
+
+**Finished**
+- Fixed the root cause in `tools/speech_to_text.py`: Streamlit microphone input is often browser-native audio, not RIFF/WAV bytes, so the app wrote the wrong payload format to disk before Whisper saw it.
+- Added a normalisation step that preserves valid WAV recordings and converts other browser formats to WAV before transcription when `ffmpeg` is available.
+- Added a focused regression test in `tests/test_speech_to_text.py` covering both WAV and non-WAV payload handling.
+- The app now fails gracefully with a clear typed-query fallback when the mic payload cannot be decoded on a machine without `ffmpeg`.
+
+**Not finished / noticed**
+- This workspace does not currently have `ffmpeg` installed, so a real browser mic recording still needs a local system install before live voice transcription can be validated in-browser here.
+
+**Next action:** install `ffmpeg` on the host machine, open the Streamlit app, and record a short spoken query to confirm the transcription text appears in the UI.
+
+---
+
+## 2026-09-11 — Stabilise local voice-query transcription
+
+**Milestone:** prototype usability; no numbered task changed.
+
+**Finished**
+- Consolidated local Faster-Whisper code in `tools/speech_to_text.py`; `app.py` now uses that one implementation.
+- Added a clear first-run download message and a typed-query fallback if the model cannot initialise or audio cannot be transcribed.
+- Normalised non-WAV browser audio to 16 kHz mono WAV when FFmpeg is available; Streamlit's `audio_input` itself returns `audio/wav`, so the normal microphone path does not depend on FFmpeg.
+- Confirmed the installed environment has Streamlit audio input, Faster-Whisper 1.2.1 and CTranslate2 4.8.2. Downloaded and loaded the public `small` model locally using the standard Hugging Face transfer route.
+- Pinned Faster-Whisper and excluded `.venv/` and `.env*` from version control while retaining `.env.example`.
+- Added/ran local audio-normalisation tests: 2 passed. The Streamlit app starts successfully and its local health check returns `ok`.
+
+**Not finished / noticed**
+- A real microphone recording still needs a manual browser test; do not treat an empty test audio file as a speech-recognition result.
+
+**Next action:** start Streamlit, record a short English or Hindi query, verify the recognised query appears, then run the normal image-analysis smoke path.
+
+---
+
 ## 2026-09-11 — Make the demo source entry local-server friendly
 
 **Milestone:** M2 frontend development workflow.
@@ -111,4 +147,3 @@ panel and trace panel exist now, and what remains on those tracks is putting rea
 **Not finished:** everything in `spec/tasks.md` M0 onward.
 **Noticed but not fixed:** the UX prototype (`SatQuery-AI-UX-Prototype.html`) has scripted/fake confidence numbers and an invented specific percentage in one answer ("12% of the field"). This is fine for its purpose (a presentation mockup) but flagged loudly in `CONTRACT.md` INV-1/INV-2 so it doesn't quietly become the real backend logic.
 **Next action:** pick up `M0-DATA-01` or `M0-ML-01` from `spec/tasks.md` — both are unblocked and can start immediately, in parallel.
-
