@@ -41,3 +41,56 @@ Rejected alternatives are the point — without them, the next person re-propose
 **Rationale:** the polished HTML frontend is valuable for the "beautiful design + story" goal, but a working Gradio demo that's real beats a beautiful frontend that ran out of time to wire to real data. Protects M0's quality from being rushed to make room for M2.
 **Rejected:** making M2 a hard requirement for M3 — rejected, because it would incentivize cutting corners on M0's evaluation to protect frontend time, which is backwards given INV-1/INV-2.
 **Revisit if:** never, for this round — this ordering (real over polished) should hold regardless of how much time is left.
+
+---
+
+## D-005 — Pivot to disaster/defence framing; flood is the flagship scenario
+
+**Status:** decided (mentor direction, 2026-09-10 — overrides D-001 per `AGENTS.md` §7)
+**Decision:** the demo's flagship scenario is **flood response**, with earthquake/change-detection as the secondary. Agri-insurance, land records and mining move to "the same architecture generalises to…" in the pitch, not build targets.
+**Rationale:** mentor emphasised end-to-end pipeline + a strong frontend, framed around disaster and defence needs. Flood is also the technically best fit: SAR sees through cloud (optical is blind during a storm), free Sentinel-1 data exists, and before/after change is the most visually legible thing we can put on a screen.
+**Supersedes:** D-001 (agri-insurance as primary persona). D-001's reasoning was sound for a retrieval-only prototype; it does not survive the pivot to disaster.
+**Rejected:** keeping agri-insurance as primary and adding flood as a fifth vertical — rejected, splits scarce build time and abandons the mentor's actual direction.
+**Revisit if:** flood data proves harder to source than the ported SEN1-2 archive supports.
+
+## D-006 — Port the ISRO_Hackathon pipeline instead of rebuilding ingestion
+
+**Status:** superseded by D-009 — the index turned out to be built from untrained weights. Kept for the reasoning, which still holds in part.
+**Decision:** reuse the existing `Pushkar0997/ISRO_Hackathon` assets — the prebuilt FAISS index (`optical_archive.index`), the metadata store (`metadata_store.json`, with sensor/year/cloud_cover fields), the dual-tower ResNet-18 SAR↔optical encoder, and the offline DB-creator notebooks — as SatQuery's data layer.
+**Rationale:** the mentor's top ask is a *working* end-to-end pipeline. That already exists in that repo and runs today. Rebuilding ingestion from Google Earth Engine / Sentinel Hub is weeks of work — atmospheric correction, cloud masking, reprojection, co-registration — and would consume the entire runway to arrive back at roughly where the old repo already is.
+**The actual gap to close is one thing:** ISRO_Hackathon takes a **SAR image** as the query; SatQuery takes **text**. Same index, same metadata, same retrieval — swap the query encoder for a CLIP text encoder. That is the real work, and it is small and well-defined.
+**Rejected:** building fresh Earth Engine / Sentinel Hub ingestion for this round — rejected on time, not on merit; it is the correct long-term path and belongs in the roadmap, not this sprint.
+**Revisit if:** the FAISS index turns out to be unusable or the archive images are too few for a convincing demo.
+
+## D-007 — Hyperspectral is a slide, not a build
+
+**Status:** decided
+**Decision:** no hyperspectral ingestion in this sprint. Show one static sample scene (EnMAP/PRISMA/Hyperion) in the deck to prove the architecture *can* take it, and say so honestly.
+**Rationale:** free hyperspectral is campaign-based and sparse, not continuously updated like Sentinel-2 — the team's own plan document reached this conclusion independently and it is correct. Building around it would burn the runway on the least available data.
+**Rejected:** a working hyperspectral query path — rejected purely on data availability within the timeframe.
+**Revisit if:** national round, with time to apply for EnMAP/PRISMA research access.
+
+## D-008 — Defence framing stays at situational awareness
+
+**Status:** decided
+**Decision:** defence use cases are framed as **monitoring and situational awareness only** — border infrastructure change detection, terrain/trafficability assessment, disaster-relief logistics. Nothing resembling targeting or weapons guidance, in the demo or the talk track.
+**Rationale:** this is the level real comparable products (Planet, Maxar, and the SatSure/Google Earth AI tools already cited in our own deck) operate at, and it is what a civilian ISRO-sponsored hackathon expects. It is also the framing that survives a hard question from a judge instead of derailing the room.
+**Rejected:** a broader defence framing — rejected as both inappropriate for the venue and strictly worse for the pitch.
+**Revisit if:** never, for this competition.
+
+## D-009 — Take patterns and diagrams from ISRO_Hackathon, not the index
+
+**Status:** decided (supersedes D-006)
+**Decision:** reuse the ISRO_Hackathon repo's *architecture, diagrams and dataset lead*. Do **not** reuse its FAISS index, its metadata values, or `CrossModalNet` as a working encoder.
+**Rationale:** reading the actual source (not the README) shows `prototype/model.py` builds both ResNet-18 towers with `weights=None` — the encoder is randomly initialised and was never trained. Its own comment says as much. So `optical_archive.index` holds embeddings from random weights, and its nearest-neighbour results are not meaningful retrieval. `metadata_store.json` is 100 entries, all Sentinel-2 agricultural tiles, all stamped year "2026" with randomised cloud-cover values, and the image files themselves are not in the repo — `app.py` prints file paths rather than rendering images, and says so.
+
+**Take:**
+- `prototype/diagram.md` — both Mermaid diagrams (UML use-case + two-phase process flow). Presentation-grade, accurate to what SatQuery is doing, immediately reusable in the deck and README.
+- The **hybrid search pattern**: metadata pre-filter narrows candidate IDs, then vector search ranks within them. This is the architectural home for the "NLP elements" requirement — a query's year/cloud/location constraints become the pre-filter.
+- The **metadata schema shape** (`file_path`, `sensor`, `year`, `cloud_cover_pct`) — good structure, regenerate with real values.
+- The **offline/online two-phase split** — correct, and already how `spec/architecture.md` is organised.
+- **The dataset lead: SEN1-2 / SEN12MS.** Free, and paired SAR + optical over the same scenes — this is the most practically valuable find, because it directly satisfies the multimodal requirement and the team has already worked with it.
+
+**Leave:** the index, the untrained encoder, the synthetic metadata values.
+**Consequence for the plan:** CLIP is not just a modality swap, it is what makes retrieval real — it ships with genuinely pretrained weights. The old repo had the right skeleton and no working muscle; SatQuery's CLIP path is the muscle.
+**Revisit if:** someone finds trained `.pth` weights for `CrossModalNet` that were never committed.

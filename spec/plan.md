@@ -1,83 +1,91 @@
 # plan.md — Milestones
 
-Sequential. Do not start M(n+1) before M(n)'s exit criteria are met — with 6 people and 2 days, the temptation to parallelize across milestones is high; resist it for anything that depends on M0's output (real embeddings) actually existing.
+**Rewritten 2026-09-10 after the mentor meeting.** See `spec/decisions.md` D-005 to D-008 for what changed and why.
 
-**Currently active: M0.**
+Sequential. **Currently active: M0.**
 
----
-
-## M0 — Retrieval proven on real images ⏱ Day 1, morning · cost ₹0
-
-Nothing else can be honestly demoed until this is true. This is the one invariant the whole pitch rests on (see `CONTRACT.md` INV-1).
-
-**Deliverables**
-- 15–20 real demo images in `data/tiles/`, across at least 2 of the 4 verticals
-- `notebooks/satquery_pipeline.ipynb` run top to bottom in Colab against those images, by an actual team member, not assumed to work because it was written
-
-**Exit criteria**
-- [ ] Notebook runs end-to-end with zero errors, on real (not placeholder) images
-- [ ] Top-1 retrieval is visibly correct for at least 8 of 10 hand-written test queries
-- [ ] The 10 test queries and their results are written down somewhere (`spec/evals.md`), not just eyeballed once and forgotten
-
-**Risk:** general CLIP (not RemoteCLIP) may retrieve poorly on visually similar satellite tiles. Mitigation: curate visually distinctive images per vertical for the demo set (a farm field and a flood look very different even to a general model; two different farm fields might not). If retrieval quality is genuinely bad after curation, that's real signal — flag it in `AGENT_LOG.md` immediately, don't quietly ship a bad demo.
+The mentor's two explicit asks are the spine of this plan: (1) a working end-to-end data pipeline on real data, (2) a frontend demo that is genuinely promising and built on that real work. Everything here serves one of those two.
 
 ---
 
-## M1 — Backend exposed as a callable API ⏱ Day 1, afternoon · cost ₹0
+## M0 — Port the working pipeline ⏱ Day 1 AM · cost ₹0
+
+The fastest route to "a working end-to-end pipeline" is the one that already exists. See D-006.
 
 **Deliverables**
-- `backend/main.py`: one FastAPI route, `POST /query`, matching the exact request/response shape pinned in `CONTRACT.md`
-- Reachable via a public URL (Colab + a tunnel, or run locally if someone has GPU access outside Colab)
+- `ISRO_Hackathon`'s FAISS index, metadata store, and encoder code pulled into `backend/` and confirmed loading
+- One retrieval confirmed working end-to-end in its original form (SAR image in → ranked optical matches out)
 
 **Exit criteria**
-- [ ] A `curl` or Postman call to `/query` with a real question returns a real (non-hardcoded) response matching the pinned shape
-- [ ] Confidence in the response is verifiably the actual similarity score (spot-check against the notebook's own output for the same query)
+- [ ] The FAISS index loads and returns ranked results with metadata (sensor, year, cloud cover) attached
+- [ ] Archive size and content confirmed — how many tiles, of what, is it enough for a convincing demo
+- [ ] A flood/water-visible subset identified inside the archive, or flagged as missing if it isn't there
 
-**Fallback if this runs out of time:** the notebook's Gradio interface (already written) is a complete, working demo surface on its own. M1 and M2 are a stretch goal for a more polished demo, not a requirement — do not sacrifice M0's quality to force this through.
+**Risk:** the archive may not contain good flood imagery (it's SEN1-2 agricultural/general scenes). If so, that's known on Day 1 morning, not Day 2 night — and M1 adapts by sourcing a handful of flood tiles rather than rebuilding anything.
 
 ---
 
-## M2 — Frontend wired to the real backend ⏱ Day 2, morning · cost ₹0
+## M1 — Text query replaces image query ⏱ Day 1 PM · cost ₹0
+
+This is the actual new engineering, and it's deliberately the only new engineering. See D-006.
 
 **Deliverables**
-- `frontend/index.html` (copy of the existing UX prototype) with its scripted `DATA` object and `findMatch()` function replaced by a real `fetch('/query', ...)` call
-- Same visual design, same interaction — only the data source changes from fake to real
+- CLIP text encoder wired as the query path into the existing FAISS index
+- Metadata filters (year, cloud cover) parsed from the query text and applied to results
 
 **Exit criteria**
-- [ ] Typing a genuinely new question (not one of the 4 pre-scripted ones) returns a real result, not a fallback to the nearest scripted match
-- [ ] Confidence bar and answer text on screen match what the backend actually returned, byte for byte
+- [ ] Typing "flooded area near a river" returns sensible ranked tiles from the ported archive
+- [ ] Confidence returned is the real similarity score (`CONTRACT.md` INV-1 — unchanged by the pivot)
+- [ ] At least 8 of 10 test queries return a defensible top result
 
-**Blocked by:** M1. Do not start wiring the frontend to an endpoint that doesn't exist yet — agree the API shape (already pinned in `CONTRACT.md`) and build both sides against that shape in parallel instead, then connect them once both are ready.
+**Note:** the old repo's dual-tower encoder and CLIP embed into *different* spaces. Either re-embed the archive with CLIP's image encoder (simpler, likely right for 2 days) or keep both indexes. Whoever picks this up decides on Day 1 and records it in `AGENT_LOG.md`.
 
 ---
 
-## M3 — Rehearsal-ready ⏱ Day 2, afternoon · cost ₹0
+## M2 — Frontend on real data ⏱ Day 2 AM · cost ₹0
+
+`satquery_demo.html` already has the right shape — two-panel map + chat, AOI draw, SAR/NDVI toggles, before/after slider. Its map is currently drawn vector shapes. The job is to put real tiles behind that interface, not to redesign it.
 
 **Deliverables**
-- A screen recording of the working demo (M2's result, or M1's Gradio fallback if M2 didn't land), as a backup if the live version fails during presentation
-- A run-through with the mentor
-- `spec/smoke.md` checked once, cold, by someone who didn't build the demo
+- Real archive tiles rendered in the map panel instead of synthetic shapes
+- Chat panel calling the real M1 retrieval
+- Before/after slider showing two real dated tiles of the same area
 
 **Exit criteria**
-- [ ] Recorded fallback exists and plays back correctly
-- [ ] At least one full run-through happened with someone other than the builder driving it
-- [ ] Mentor has seen it before the actual presentation, not for the first time during it
+- [ ] A question typed live returns a real tile and a real confidence, visible on screen
+- [ ] The agent-trace panel shows what actually ran, not a scripted sequence
+- [ ] Nothing on screen claims a specific number that wasn't computed (`CONTRACT.md` INV-2)
+
+---
+
+## M3 — Rehearsal-ready ⏱ Day 2 PM · cost ₹0
+
+**Deliverables**
+- Screen recording of the working demo as fallback
+- Talk track connecting the flood story to what's on screen
+- Mentor walkthrough before the actual slot
+
+**Exit criteria**
+- [ ] Recorded fallback exists and plays
+- [ ] One full run-through by someone who didn't build it
+- [ ] Mentor has seen it before presentation day
 
 ---
 
 ## Sequencing rules
 
-- M0 blocks everything — no honest demo exists without it.
-- M1 and M2 can be developed in parallel by different people once the API shape is agreed, but M2's integration step needs M1 actually deployed and reachable.
-- Do not skip M3 to spend more time on features. A live demo with no fallback is the single most avoidable failure mode of a hackathon presentation.
+- M0 blocks M1 — no text-query work until we know what's actually in the archive.
+- M2's map work can start immediately in parallel (it needs tiles, not the query path).
+- Do not skip M3. A live demo with no fallback is the most avoidable failure in a hackathon.
 
 ## Anti-goals for the current stage
 
-Things that will feel productive right now and are not, until M0–M2 are done:
+Things that will feel productive right now and are not:
 
-- Adding a second or third vertical to the demo image set before the first one retrieves reliably.
-- Building change detection or SAR fusion, even a toy version, to make the pitch look more advanced. It doesn't help the M3 exit criteria and directly contradicts the deck's own Feasibility slide.
-- Polishing the frontend's visual design further. It's already built and reviewed — the risk right now is that it's beautiful and fake, not that it's insufficiently beautiful.
-- Deploying anywhere beyond Colab. Nobody asked for persistent hosting at this stage.
+- **Building fresh Google Earth Engine / Sentinel Hub ingestion.** See D-006 — weeks of work to arrive where the old repo already is.
+- **Hyperspectral anything.** See D-007 — it's a slide.
+- **A five-agent LangGraph orchestration layer.** The team's plan document itself notes agents 1/2/3/5 collapse into one LLM with different schemas. For this sprint, even that is optional — the *trace panel* showing real routing matters more to a judge than genuinely distributed agents.
+- **PostGIS + pgvector.** FAISS is already built, already populated, already works.
+- **Redesigning `satquery_demo.html`.** It's good. It needs real data behind it, not more design.
 
-If you find yourself doing one of these, check which milestone is actually active.
+If you find yourself doing one of these, check which milestone is active.
