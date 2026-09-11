@@ -80,7 +80,9 @@ class DemoRequestHandler(SimpleHTTPRequestHandler):
 
         try:
             transcript = transcribe_audio(
-                self.rfile.read(content_length), language=requested_language or None
+                self.rfile.read(content_length),
+                language=requested_language or None,
+                task="translate",
             )
         except SpeechToTextError as error:
             self._send_json(HTTPStatus.UNPROCESSABLE_ENTITY, {"error": str(error)})

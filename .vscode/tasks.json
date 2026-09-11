@@ -1,0 +1,30 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run SatQuery Streamlit app",
+			"type": "shell",
+			"command": ".venv/bin/python",
+			"args": [
+				"-m",
+				"streamlit",
+				"run",
+				"app.py",
+				"--server.address",
+				"127.0.0.1",
+				"--server.port",
+				"8501"
+			],
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Run SatQuery",
+			"type": "shell",
+			"command": ".venv/bin/python -m streamlit run app.py --server.address 127.0.0.1 --server.port 8501",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}

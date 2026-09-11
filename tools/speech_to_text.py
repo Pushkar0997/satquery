@@ -105,8 +105,12 @@ def prepare_audio_for_transcription(audio_bytes: bytes, output_dir: str | Path |
     return str(output_path)
 
 
-def transcribe_audio(audio_bytes: bytes, language: str | None = None) -> str:
-    """Transcribe a microphone recording from Streamlit's browser audio input."""
+def transcribe_audio(
+    audio_bytes: bytes,
+    language: str | None = None,
+    task: str = "transcribe",
+) -> str:
+    """Transcribe audio, or translate supported speech into English."""
     audio_path = prepare_audio_for_transcription(audio_bytes)
 
     try:
@@ -114,6 +118,7 @@ def transcribe_audio(audio_bytes: bytes, language: str | None = None) -> str:
             segments, _ = get_speech_model().transcribe(
                 audio_path,
                 language=language,
+                task=task,
                 beam_size=5,
                 vad_filter=True,
             )
