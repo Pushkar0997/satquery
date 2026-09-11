@@ -31,6 +31,15 @@ const TYPES = {
 };
 
 const server = http.createServer((req, res) => {
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, {
+      'access-control-allow-origin': '*',
+      'access-control-allow-methods': 'GET, OPTIONS',
+      'access-control-allow-headers': 'Content-Type',
+    }).end();
+    return;
+  }
+
   const url = decodeURIComponent((req.url || '/').split('?')[0]);
   const rel = url === '/' ? 'index.html' : url.replace(/^\/+/, '');
   const file = path.join(ROOT, rel);
@@ -48,6 +57,8 @@ const server = http.createServer((req, res) => {
     }
     res.writeHead(200, {
       'content-type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream',
+      // Allow the demo to be embedded from another local development origin.
+      'access-control-allow-origin': '*',
       // Never cache during development, or an edit appears not to have landed.
       'cache-control': 'no-store',
     }).end(body);

@@ -1,4 +1,6 @@
 .env
+.idea/
+.mcp.json
 __pycache__/
 *.py[cod]
 .pytest_cache/

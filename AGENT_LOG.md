@@ -2,6 +2,21 @@
 
 Append-only. **Newest entry at the top.** Every entry: milestone, tasks touched, what didn't get finished, anything noticed but not fixed, and a specific next action.
 
+## 2026-09-11 — Make the demo source entry local-server friendly
+
+**Milestone:** M2 frontend development workflow.
+**Tasks touched:** none of the numbered tasks directly.
+
+**Finished**
+- Added CORS response and preflight headers to `demo/serve.js` for local embedding.
+- Added `demo/open-local.bat` so Windows opens the HTTP-served source entry instead of `file://`.
+- Documented why `demo/index.html` cannot be opened directly and preserved the offline `satquery-demo.html` path.
+
+**Not finished / noticed**
+- The browser cannot be made to import ES modules from `file://` with CORS headers; this is a browser security restriction. The source workflow therefore requires HTTP, while the generated root HTML remains double-clickable.
+
+**Next action:** run the local launcher or `npm run dev`, then verify `http://127.0.0.1:5173/` in a browser.
+
 ---
 
 ## 2026-09-11 — Demo app v2 built on a mocked data layer (branch `demo/prototype-v2`)

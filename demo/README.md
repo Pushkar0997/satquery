@@ -32,6 +32,12 @@ npm run dev                # or: node demo/serve.js
 Then open `http://127.0.0.1:5173`. There are no dependencies — `npm install`
 is not required for either command.
 
+On Windows, double-click `demo/open-local.bat` to start the same server and
+open the correct URL automatically. Do not double-click `demo/index.html`:
+that source entry intentionally imports ES modules, which browsers block from
+`file://` pages. The local server includes CORS headers for embedding the demo
+from another local development origin.
+
 ---
 
 ## Layout
