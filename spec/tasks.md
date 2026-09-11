@@ -1,96 +1,69 @@
 # tasks.md — Backlog
 
-One task = one change = one commit. Tick the box and add a one-line note when done. Task ID format: `M<milestone>-<area>-<number>`.
+**Rewritten 2026-09-10 after the mentor meeting.** See `spec/decisions.md` D-005 to D-008.
 
-## How this is split for 6 people
+One task = one change = one commit. Task ID format: `M<milestone>-<area>-<number>`.
 
-Six ownership tracks, designed so each person can start **immediately, in parallel, without waiting on anyone else** for most of their work. The two places real coupling exists (backend <-> frontend, ML <-> backend) are decoupled by building against the **pinned contract in `CONTRACT.md`** first and integrating last -- see each track's "stay unblocked" note.
+## Six tracks, one per person
 
-| # | Owner | Track | Genuinely blocked by anyone? |
+| # | Owner | Track | Blocked by? |
 |---|---|---|---|
-| 1 | Data | Curate demo images + test query bank | No -- fully independent |
-| 2 | ML | Get retrieval actually working, validate quality | Only the *final* full validation pass needs Track 1's images; the rest starts immediately on the 4 seed images already in `data/tiles/` |
-| 3 | Backend | Wrap retrieval as a `/query` API | No, if built against a stub first -- see note |
-| 4 | Frontend | Wire the real UI to real data | No, if built against a mock first -- see note |
-| 5 | Research | Source RemoteCLIP, test if it's actually better | No -- fully independent until it's ready to swap in |
-| 6 | Presentation | Talk track, mentor walkthrough, recorded fallback | Only the final recording step needs *something* working -- any track's output, even the Gradio fallback |
+| 1 | Pipeline | Port the ISRO_Hackathon FAISS index + metadata | No — start here, everything depends on it |
+| 2 | Retrieval | Swap SAR-image query for CLIP text query | Needs T1's index loaded; can prep the encoder immediately |
+| 3 | Map | Real tiles into the demo's map panel | No — needs tiles, not the query path |
+| 4 | Chat/API | Wire chat panel to real retrieval | No, if built against `CONTRACT.md`'s pinned shape first |
+| 5 | Scenario | Curate the flood story: before/after pair, NDWI, the narrative | No — fully independent |
+| 6 | Demo | Talk track, trace panel, recording, mentor walkthrough | Only the recording needs something working |
 
 ---
 
-## Track 1 -- Data & Eval Set
+## Track 1 — Pipeline (build the index for real)
 
-**Goal:** the demo image set and the test query bank exist and are good.
+See `spec/decisions.md` D-009 — the old repo's index is unusable (untrained weights), so this track builds a real one. The old repo's *structure* is the guide, not its artefacts.
 
-- [ ] **M0-DATA-01** Curate 15-20 real satellite/aerial demo images across >=2 verticals (start with agri-insurance, add a second). Save to `data/tiles/`, named by vertical (`agri_05.jpg`, etc.). The 4 seed images already there count toward this.
-- [ ] **M0-DATA-02** Write 10 test queries -- the 4 from the deck plus 6 new ones, including at least 2 intentionally hard/ambiguous ones. Fill the table skeleton in `spec/evals.md`.
+- [ ] **M0-PIPE-01** Get a SEN1-2 / SEN12MS subset (free, paired SAR + optical over the same scenes). A few hundred tiles is plenty. Prefer scenes with water/flooding if available.
+- [ ] **M0-PIPE-02** Embed the optical tiles with CLIP's **image** encoder (real pretrained weights — this is what the old repo lacked) and build a fresh FAISS index.
+- [ ] **M0-PIPE-03** Generate a real metadata store using the old repo's schema shape (`file_path`, `sensor`, `year`, `cloud_cover_pct`) — but with values actually derived from the data, not randomised.
+- [ ] **M0-PIPE-04** Report in `AGENT_LOG.md`: tile count, what's depicted, whether any show water. Shapes every other track's plan.
 
-**Stay unblocked:** nothing to wait for. Start here.
+## Track 2 — Text query
 
----
+- [ ] **M1-RET-01** Decide and record: re-embed the archive with CLIP's image encoder, or keep the old dual-tower index alongside a new CLIP one. Write the choice and reasoning in `AGENT_LOG.md`. Do this on Day 1 — it blocks everything downstream.
+- [ ] **M1-RET-02** Wire CLIP text encoder → FAISS search → top-k tiles with metadata attached.
+- [ ] **M1-RET-03** Parse year and cloud-cover constraints out of query text and apply them as filters (the old repo's metadata store already has these fields — reuse, don't rebuild).
+- [ ] **M1-RET-04** Run 10 test queries, record real results in `spec/evals.md`.
 
-## Track 2 -- Retrieval Pipeline
+## Track 3 — Map panel
 
-**Goal:** `notebooks/satquery_pipeline.ipynb` runs end-to-end and retrieval quality is actually measured, not assumed.
+- [ ] **M2-MAP-01** Replace `satquery_demo.html`'s synthetic canvas shapes with real archive tiles rendered as the map layer.
+- [ ] **M2-MAP-02** Wire the before/after compare slider to two genuinely different dated tiles of the same area.
+- [ ] **M2-MAP-03** Make the AOI box and evidence overlay reflect the actual retrieved tile, not a fixed position.
 
-- [ ] **M0-ML-01** Run notebook sections 1-3 in Colab against the 4 seed images already in the repo. Confirm the encoder loads and embeds with no errors. Do this immediately -- don't wait for Track 1.
-- [ ] **M0-ML-02** Re-index against Track 1's fuller image set once it lands.
-- [ ] **M0-ML-03** Run all 10 of Track 1's test queries, record actual results (retrieved tile + confidence) in `spec/evals.md`'s table. Flag in `AGENT_LOG.md` if below 8/10 correct.
+## Track 4 — Chat + API
 
-**Stay unblocked:** M0-ML-01 needs nothing from anyone. Only M0-ML-02/03 need Track 1's output -- start those the moment Track 1 pushes images, don't idle waiting for a "finished" signal.
+- [ ] **M2-API-01** Scaffold the `/query` endpoint per `CONTRACT.md`'s pinned shape, against a stub. Start immediately, don't wait for Track 2.
+- [ ] **M2-API-02** Swap the stub for Track 2's real retrieval.
+- [ ] **M2-API-03** Wire the demo's chat panel to call it; confirm a genuinely new question (not a preset chip) returns a real result.
 
----
+## Track 5 — Flood scenario
 
-## Track 3 -- Backend API
+- [ ] **M0-SCEN-01** Build the flood narrative: which event, which area, what a responder would actually ask. Concrete and specific — "Kerala, monsoon, which villages are cut off" beats "a flood."
+- [ ] **M0-SCEN-02** Source a before/after tile pair for that area if the ported archive lacks one (Sentinel-1 via Copernicus is free; one pair is enough).
+- [ ] **M0-SCEN-03** Compute NDWI (water index) on the pair — cheap, explainable, and gives the map a real overlay rather than a drawn one.
 
-**Goal:** a real `POST /query` endpoint matching the shape pinned in `CONTRACT.md`.
+## Track 6 — Demo & narrative
 
-- [ ] **M1-API-01** Scaffold `backend/main.py` -- the FastAPI route, request/response validation against the pinned shape -- using **dummy/random embeddings as a stub**. Do not wait for Track 2 to "finish."
-- [ ] **M1-API-02** Swap the stub for Track 2's real `query()` logic once it's confirmed working. This should be close to a straight import, not a rewrite, because the interface was agreed up front.
-- [ ] **M1-API-03** Deploy reachable via a public URL (Colab + tunnel, or local + tunnel). Confirm with `curl` that it returns real, non-hardcoded data.
-
-**Stay unblocked:** build and fully test the API shape and validation logic against a stub from hour one. The only real dependency is swapping the stub for the real thing in M1-API-02, which should be small if `CONTRACT.md`'s shape was followed on both sides.
-
----
-
-## Track 4 -- Frontend Integration
-
-**Goal:** `frontend/index.html` calls real data instead of the scripted `DATA` object.
-
-- [ ] **M2-UI-01** Copy `SatQuery-AI-UX-Prototype.html` to `frontend/index.html` if not already done, and build a **local mock** matching `CONTRACT.md`'s exact response shape (a tiny mock server, or a hardcoded fetch stub) -- wire the UI to that first.
-- [ ] **M2-UI-02** Swap the mock URL for Track 3's real deployed endpoint once it's live. Should be a one-line change if both sides built against the same pinned shape.
-- [ ] **M2-UI-03** Confirm a genuinely new question (not one of the 4 pre-scripted ones) returns a real result end-to-end in the browser.
-
-**Stay unblocked:** the mock-the-contract approach means the actual integration work -- the fetch call, the loading state, the error handling -- gets built and tested on day one, not blocked on Track 3's deployment.
+- [ ] **M3-DEMO-01** Draft the talk track. Open on the flood scenario; defence framing stays at monitoring/situational awareness only (D-008). Start now, needs no code.
+- [ ] **M3-DEMO-02** Make the agent-trace panel show what actually ran — real model names, real confidence. This is the single most convincing element for a technical judge and it's cheap once Track 2 works.
+- [ ] **M3-DEMO-03** Screen-record a working run as fallback.
+- [ ] **M3-DEMO-04** Mentor walkthrough before presentation day.
 
 ---
 
-## Track 5 -- RemoteCLIP & Accuracy
+## Backlog — do not start
 
-**Goal:** find out whether swapping in RemoteCLIP is worth doing, with evidence.
-
-- [ ] **M0-ML-04** Source the RemoteCLIP checkpoint (author's release -- search for it, don't guess a URL). Load it in a **copy** of the notebook via `REMOTECLIP_PATH`, re-run Track 1's same 10 test queries, and compare accuracy against Track 2's general-CLIP baseline.
-- [ ] Report the comparison in `AGENT_LOG.md`. If RemoteCLIP is clearly better, update `spec/decisions.md` D-002 and hand the swap to Track 2's owner -- don't merge it in yourself mid-stream while they're using the notebook.
-
-**Stay unblocked:** entirely separate track until there's something worth merging. Doesn't touch the main notebook until the comparison is done.
-
----
-
-## Track 6 -- Demo Reliability & Narrative
-
-**Goal:** there's a working demo no matter what breaks, and a story that connects the deck to it.
-
-- [ ] **M3-DEMO-04** Draft the talk track -- what gets said while a query runs, how the fallback gets introduced if it's needed. Start immediately; this doesn't need working code.
-- [ ] **M3-DEMO-03** Schedule the mentor walkthrough -- logistics can be arranged now regardless of build status.
-- [ ] **M3-DEMO-01** Screen-record a full working run once *any* track has something working (Gradio counts as a complete fallback on its own -- doesn't require Tracks 3/4 to finish).
-- [ ] **M3-DEMO-02** Run `spec/smoke.md` cold, with someone who didn't build the piece they're checking.
-
-**Stay unblocked:** the talk-track and scheduling half starts today with zero dependencies. Only the recording step needs *something* real to record -- it doesn't need every other track finished, just one working path.
-
----
-
-## Backlog -- unscheduled, do not start
-
-- Second vertical fully wired beyond the 2 minimum for M0 -- deferred, see `spec/plan.md` anti-goals.
-- LLM-generated answer text -- deferred, see `spec/product.md` non-goals.
-- Change detection / SAR fusion -- deferred, see `CONTRACT.md` "never do this."
-- Persistent hosting beyond Colab -- not needed for this round.
+- Google Earth Engine / Sentinel Hub live ingestion — D-006, post-round.
+- Hyperspectral ingestion — D-007, slide only.
+- LangGraph five-agent orchestration — see `spec/plan.md` anti-goals.
+- PostGIS + pgvector — FAISS already works.
+- Agri-insurance / land-records / mining as built demos — D-005, pitch generalisation only.

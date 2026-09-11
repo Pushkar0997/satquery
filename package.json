@@ -1,0 +1,15 @@
+{
+  "name": "satquery-demo",
+  "version": "0.2.0",
+  "private": true,
+  "description": "SatQuery AI — presentation demo build (scripted scenarios, procedural imagery)",
+  "scripts": {
+    "dev": "node demo/serve.js",
+    "build": "node demo/build.js"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18"
+  }
+}

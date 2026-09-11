@@ -1,0 +1,5382 @@
+<!DOCTYPE html>
+<!--
+  SatQuery AI — offline demo build
+  GENERATED FILE. Do not edit: run `node demo/build.js` instead.
+  Source of truth is demo/. Built 2026-09-11T02:10:31.791Z.
+
+  This is a demo. Scenario data is scripted and the imagery is procedurally
+  generated, not real satellite imagery. The app says so on screen and does not
+  let you dismiss it. See CONTRACT.md INV-1 / INV-2.
+
+  No network access required. No external fonts, scripts, styles or images.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SatQuery AI — demo build</title>
+<meta name="description" content="Natural-language query over satellite imagery. Demo build with scripted scenarios.">
+<style>
+/* ===========================================================================
+   SatQuery AI — demo build stylesheet
+
+   Analyst tool, not a landing page: warm paper chrome, a dark imagery stage,
+   1px rules instead of shadows, and confident density. No web fonts — the demo
+   has to survive a venue with no network, so the type stack is entirely system
+   faces, with a real old-style serif for display.
+   ======================================================================== */
+
+:root {
+  --display: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Iowan Old Style', Georgia, serif;
+  --sans: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --mono: 'Cascadia Mono', 'Cascadia Code', Consolas, 'SF Mono', 'DejaVu Sans Mono', monospace;
+
+  --paper: #F5F1E6;
+  --paper-2: #EEE8DA;
+  --paper-3: #E4DCC9;
+  --rule: #D8CFBA;
+  --rule-2: #C3B79C;
+
+  --ink: #1C1913;
+  --ink-2: #4A4438;
+  --ink-3: #7C7362;
+  --ink-4: #9C927E;
+
+  --amber: #A65B12;
+  --amber-2: #C6792B;
+  --amber-wash: #F1E2C7;
+
+  --cyan: #0A6B75;
+  --cyan-2: #128E9A;
+  --cyan-wash: #DCEDEE;
+  --cyan-glow: #3ADCE8;
+
+  --alert: #9A3319;
+  --alert-wash: #F3DED6;
+  --warn: #8A6410;
+  --ok: #3C6A34;
+
+  --slate: #10141A;
+  --slate-2: #171D25;
+  --slate-3: #232C37;
+
+  --r: 4px;
+  --header-h: 52px;
+  --ease: cubic-bezier(.22, .61, .36, 1);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button { font-family: inherit; color: inherit; }
+::selection { background: var(--amber-wash); }
+
+/* Focus visible everywhere, since this is keyboard-drivable. */
+:focus-visible {
+  outline: 2px solid var(--cyan-2);
+  outline-offset: 1px;
+}
+
+/* ---------- app shell ---------------------------------------------------- */
+
+.app {
+  display: grid;
+  grid-template-rows: var(--header-h) 1fr;
+  height: 100vh;
+}
+
+/* ---------- header ------------------------------------------------------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--rule-2);
+  background: linear-gradient(var(--paper), var(--paper-2));
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  flex: none;
+}
+.brand .mark {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: var(--paper);
+  background: var(--ink);
+  padding: 3px 6px;
+  border-radius: 3px;
+  align-self: center;
+}
+.brand .name {
+  font-family: var(--display);
+  font-size: 19px;
+  letter-spacing: -.01em;
+}
+.brand .sub {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  letter-spacing: .04em;
+}
+
+/* Scenario switcher */
+.scenarios {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  overflow: hidden;
+  background: var(--paper);
+}
+.scenario-btn {
+  appearance: none;
+  border: 0;
+  border-right: 1px solid var(--rule);
+  background: transparent;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  cursor: pointer;
+  color: var(--ink-2);
+  white-space: nowrap;
+  transition: background .14s var(--ease), color .14s var(--ease);
+}
+.scenario-btn:last-child { border-right: 0; }
+.scenario-btn:hover { background: var(--paper-3); }
+.scenario-btn[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+.scenario-btn .flag {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .07em;
+  color: var(--amber);
+  margin-left: 6px;
+  vertical-align: 1px;
+}
+.scenario-btn[aria-pressed="true"] .flag { color: var(--amber-2); }
+
+.topbar-spacer { flex: 1; }
+
+/* The honesty label. Permanent, not dismissible, and styled to read as a
+   status stamp rather than as a warning to be clicked away. */
+.demo-stamp {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .03em;
+  color: var(--ink-2);
+  border: 1px solid var(--rule-2);
+  border-left: 3px solid var(--amber);
+  background: var(--amber-wash);
+  padding: 5px 10px;
+  border-radius: var(--r);
+  flex: none;
+}
+.demo-stamp b { font-weight: 700; letter-spacing: .06em; }
+
+.topbar-meta {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  text-align: right;
+  line-height: 1.45;
+  flex: none;
+}
+
+/* ---------- main split --------------------------------------------------- */
+
+.main {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  min-height: 0;
+}
+@media (min-width: 1700px) { .main { grid-template-columns: 1fr 470px; } }
+
+.panel-map {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--rule-2);
+}
+
+/* ---------- map toolbar -------------------------------------------------- */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper-2);
+  flex-wrap: wrap;
+}
+
+.tool-group { display: flex; align-items: center; gap: 7px; }
+.tool-label {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+
+.seg {
+  display: flex;
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  overflow: hidden;
+  background: var(--paper);
+}
+.seg button {
+  appearance: none;
+  border: 0;
+  border-right: 1px solid var(--rule);
+  background: transparent;
+  padding: 5px 11px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--ink-2);
+  transition: background .14s var(--ease), color .14s var(--ease);
+  white-space: nowrap;
+}
+.seg button:last-child { border-right: 0; }
+.seg button:hover { background: var(--paper-3); }
+.seg button[aria-pressed="true"] {
+  background: var(--cyan);
+  color: #fff;
+}
+
+.toggle {
+  appearance: none;
+  border: 1px solid var(--rule-2);
+  background: var(--paper);
+  border-radius: var(--r);
+  padding: 5px 11px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--ink-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: background .14s var(--ease), border-color .14s var(--ease);
+}
+.toggle:hover { background: var(--paper-3); }
+.toggle[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.toggle .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ink-4);
+  transition: background .14s var(--ease);
+}
+.toggle[aria-pressed="true"] .dot { background: var(--cyan-glow); }
+
+/* ---------- map stage ---------------------------------------------------- */
+
+.stage {
+  position: relative;
+  background: var(--slate);
+  overflow: hidden;
+  min-height: 0;
+  cursor: grab;
+}
+.stage.dragging { cursor: grabbing; }
+.stage.drawing { cursor: crosshair; }
+/* While comparing, the whole frame is the swipe control. */
+.stage.comparing { cursor: ew-resize; }
+
+.layer {
+  position: absolute;
+  inset: 0;
+  will-change: clip-path;
+}
+.layer canvas {
+  position: absolute;
+  transform-origin: 0 0;
+  image-rendering: auto;
+  /* No CSS transition: the viewport is tweened in script so the overlay canvas
+     stays locked to the imagery frame by frame. */
+}
+.layer-before { z-index: 2; }
+.layer-after { z-index: 1; }
+
+.overlay-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* Compare handle */
+.compare-handle {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 2px;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .35);
+  z-index: 4;
+  cursor: ew-resize;
+  transform: translateX(-1px);
+}
+.compare-handle::before {
+  content: '';
+  position: absolute;
+  left: -14px; right: -14px; top: 0; bottom: 0;
+}
+.compare-grip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .95);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, .45);
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--slate);
+  letter-spacing: -1px;
+}
+.compare-tag {
+  position: absolute;
+  top: 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .06em;
+  padding: 4px 8px;
+  border-radius: 3px;
+  background: rgba(16, 20, 26, .78);
+  color: #EDE7D9;
+  border: 1px solid rgba(255, 255, 255, .16);
+  z-index: 4;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.compare-tag.left { left: 12px; }
+.compare-tag.right { right: 12px; }
+
+/* Stage badges */
+.stage-badges {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  align-items: flex-start;
+  pointer-events: none;
+}
+.badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .05em;
+  padding: 4px 8px;
+  border-radius: 3px;
+  background: rgba(16, 20, 26, .74);
+  border: 1px solid rgba(255, 255, 255, .14);
+  color: #D8D2C4;
+  white-space: nowrap;
+}
+.badge.synthetic {
+  border-left: 3px solid var(--amber-2);
+  color: #F0DFC2;
+}
+.scalebar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: #D8D2C4;
+  background: rgba(16, 20, 26, .74);
+  border: 1px solid rgba(255, 255, 255, .14);
+  padding: 4px 8px;
+  border-radius: 3px;
+}
+.scalebar .bar {
+  height: 3px;
+  background: #D8D2C4;
+  position: relative;
+}
+.scalebar .bar::before,
+.scalebar .bar::after {
+  content: '';
+  position: absolute;
+  width: 1px; height: 7px;
+  background: #D8D2C4;
+  top: -2px;
+}
+.scalebar .bar::before { left: 0; }
+.scalebar .bar::after { right: 0; }
+
+.stage-controls {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 5;
+  display: flex;
+  gap: 6px;
+}
+.stage-controls button {
+  appearance: none;
+  width: 28px; height: 28px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  background: rgba(16, 20, 26, .78);
+  color: #E4DECF;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .14s var(--ease);
+}
+.stage-controls button:hover { background: rgba(40, 50, 62, .92); }
+.stage-controls button.wide { width: auto; padding: 0 10px; font-size: 11px; }
+
+/* Legend for the vector overlay */
+/* Bottom-right: the top-right corner is where the relief-staging marker and
+   the compare tag both land. */
+.map-legend {
+  position: absolute;
+  right: 12px;
+  bottom: 48px;
+  z-index: 5;
+  background: rgba(16, 20, 26, .80);
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: var(--r);
+  padding: 9px 11px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: #D8D2C4;
+  line-height: 1.9;
+  pointer-events: none;
+  max-width: 190px;
+}
+.map-legend h4 {
+  margin: 0 0 5px;
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #A39A88;
+  font-weight: 600;
+}
+.map-legend .row { display: flex; align-items: center; gap: 7px; }
+.map-legend .swatch {
+  width: 14px; height: 3px; flex: none; border-radius: 2px;
+}
+.map-legend .swatch.dashed {
+  background-image: repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 7px);
+  height: 3px;
+}
+
+/* Loading + error states over the stage */
+.stage-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: var(--slate);
+  transition: opacity .35s var(--ease);
+}
+.stage-veil[hidden] { display: none; }
+.stage-veil.fading { opacity: 0; pointer-events: none; }
+.veil-inner {
+  text-align: center;
+  color: #CFC8B8;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .04em;
+  max-width: 340px;
+}
+.veil-inner .veil-title {
+  font-family: var(--display);
+  font-size: 18px;
+  letter-spacing: 0;
+  color: #EFE9DA;
+  margin-bottom: 10px;
+}
+.progress-track {
+  width: 240px;
+  height: 2px;
+  background: rgba(255, 255, 255, .14);
+  margin: 14px auto 8px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--cyan-glow);
+  transition: width .2s linear;
+}
+.veil-step { color: #8E8778; }
+.veil-error .veil-title { color: #F0B9A6; }
+.veil-retry {
+  margin-top: 14px;
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, .3);
+  background: transparent;
+  color: #EFE9DA;
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 7px 16px;
+  border-radius: var(--r);
+  cursor: pointer;
+}
+.veil-retry:hover { background: rgba(255, 255, 255, .1); }
+
+/* ---------- map footer --------------------------------------------------- */
+
+.map-footer {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 7px 12px;
+  border-top: 1px solid var(--rule);
+  background: var(--paper-2);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.map-footer .kv { display: flex; gap: 6px; align-items: baseline; }
+.map-footer .k { color: var(--ink-4); letter-spacing: .05em; }
+.map-footer .v { color: var(--ink); }
+.map-footer .spacer { flex: 1; }
+
+/* ---------- chat panel --------------------------------------------------- */
+
+.panel-chat {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 0;
+  background: var(--paper);
+}
+
+.chat-head {
+  padding: 10px 14px 9px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper-2);
+}
+.chat-head h2 {
+  margin: 0 0 3px;
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: -.005em;
+}
+.chat-head p {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  line-height: 1.45;
+}
+.chat-head .index-line {
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-4);
+  letter-spacing: .03em;
+}
+
+.messages {
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-2) transparent;
+}
+.messages::-webkit-scrollbar { width: 9px; }
+.messages::-webkit-scrollbar-thumb {
+  background: var(--rule-2);
+  border-radius: 5px;
+  border: 3px solid var(--paper);
+}
+
+.messages > * { flex: 0 0 auto; }
+
+.msg { animation: rise .3s var(--ease) both; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.msg-user {
+  align-self: flex-end;
+  max-width: 88%;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 9px 13px;
+  border-radius: 10px 10px 2px 10px;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.msg-agent {
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  background: #FBF8F0;
+  overflow: hidden;
+}
+
+/* --- trace block --- */
+
+.trace {
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper-2);
+}
+.trace-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 8px 11px;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.trace-head:hover { background: var(--paper-3); }
+.trace-head .chev {
+  margin-left: auto;
+  transition: transform .2s var(--ease);
+  font-size: 9px;
+  color: var(--ink-4);
+}
+.trace[data-open="false"] .chev { transform: rotate(-90deg); }
+.trace[data-open="false"] .trace-body { display: none; }
+.trace-head .live-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--cyan-2);
+  animation: blink 1.1s ease-in-out infinite;
+}
+@keyframes blink { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.trace-head .summary {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-2);
+  font-size: 10.5px;
+}
+
+.trace-body { padding: 2px 11px 10px; }
+
+.trace-step {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 9px;
+  position: relative;
+  padding: 5px 0;
+  animation: stepIn .34s var(--ease) both;
+}
+@keyframes stepIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: none; }
+}
+/* The connector line between steps, so the sequence reads as a pipeline. */
+.trace-step::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 20px;
+  bottom: -5px;
+  width: 1px;
+  background: var(--rule-2);
+}
+.trace-step:last-child::before { display: none; }
+
+.trace-n {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink-4);
+  background: var(--paper);
+  border: 1px solid var(--rule-2);
+  border-radius: 50%;
+  width: 19px; height: 19px;
+  display: grid;
+  place-items: center;
+  z-index: 1;
+}
+.trace-step[data-status="reroute"] .trace-n {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: var(--amber-wash);
+}
+.trace-step[data-status="warn"] .trace-n {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.trace-title {
+  font-size: 12px;
+  color: var(--ink);
+  font-weight: 600;
+  letter-spacing: -.005em;
+}
+.trace-detail {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-2);
+  margin-top: 2px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.trace-step[data-status="reroute"] .trace-detail {
+  color: var(--amber);
+  font-weight: 600;
+}
+.trace-sub {
+  font-size: 10.5px;
+  color: var(--ink-4);
+  margin-top: 2px;
+  line-height: 1.45;
+}
+.trace-note {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink-4);
+  letter-spacing: .04em;
+  padding: 6px 11px 0;
+  border-top: 1px dashed var(--rule);
+  margin-top: 4px;
+}
+
+/* --- answer body --- */
+
+.answer-wrap { padding: 12px 13px 11px; }
+
+.answer-headline {
+  font-family: var(--display);
+  font-size: 16.5px;
+  line-height: 1.3;
+  margin: 0 0 7px;
+  letter-spacing: -.005em;
+}
+.answer-headline.alert { color: var(--alert); }
+
+.answer-text {
+  font-size: 13.5px;
+  line-height: 1.62;
+  color: var(--ink-2);
+  margin: 0;
+  min-height: 1.62em;
+}
+.answer-text .caret {
+  display: inline-block;
+  width: 7px;
+  height: 15px;
+  background: var(--cyan-2);
+  vertical-align: -2px;
+  margin-left: 1px;
+  animation: blink .9s step-end infinite;
+}
+
+/* --- confidence --- */
+
+.confidence {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid var(--rule);
+}
+.confidence .label {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  flex: none;
+}
+.conf-track {
+  flex: 1;
+  height: 4px;
+  background: var(--paper-3);
+  border-radius: 2px;
+  overflow: hidden;
+  min-width: 40px;
+}
+.conf-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 2px;
+  transition: width .6s var(--ease) .1s;
+  background: var(--cyan-2);
+}
+.conf-fill[data-tone="high"] { background: var(--ok); }
+.conf-fill[data-tone="moderate"] { background: var(--cyan-2); }
+.conf-fill[data-tone="low"] { background: var(--amber-2); }
+.conf-fill[data-tone="floor"] { background: var(--alert); }
+.conf-num {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  flex: none;
+}
+.conf-band {
+  font-size: 10.5px;
+  color: var(--ink-3);
+  flex: none;
+}
+
+/* --- meta + actions --- */
+
+.answer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 9px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-4);
+}
+.answer-meta .v { color: var(--ink-2); }
+
+.answer-actions {
+  display: flex;
+  gap: 7px;
+  margin-top: 11px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.act {
+  appearance: none;
+  border: 1px solid var(--rule-2);
+  background: var(--paper);
+  border-radius: var(--r);
+  padding: 6px 11px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--ink-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background .14s var(--ease), border-color .14s var(--ease), color .14s var(--ease);
+}
+.act:hover { background: var(--cyan-wash); border-color: var(--cyan-2); color: var(--cyan); }
+.act.primary {
+  background: var(--cyan);
+  border-color: var(--cyan);
+  color: #fff;
+}
+.act.primary:hover { background: var(--cyan-2); border-color: var(--cyan-2); color: #fff; }
+.act .glyph { font-family: var(--mono); font-size: 11px; }
+
+.thumb {
+  width: 54px; height: 54px;
+  border-radius: 3px;
+  border: 1px solid var(--rule-2);
+  object-fit: cover;
+  display: block;
+  cursor: pointer;
+  transition: border-color .14s var(--ease);
+}
+.thumb:hover { border-color: var(--cyan-2); }
+
+.evidence-strip {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--rule);
+}
+.evidence-strip .body { min-width: 0; }
+.evidence-strip .cap {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+.evidence-strip .title {
+  font-size: 12.5px;
+  color: var(--ink);
+  margin-top: 2px;
+  font-weight: 600;
+}
+.evidence-strip .note {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-3);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* --- provenance --- */
+
+.provenance {
+  margin-top: 10px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  background: var(--paper-2);
+  overflow: hidden;
+}
+.provenance[hidden] { display: none; }
+.provenance table { width: 100%; border-collapse: collapse; }
+.provenance th {
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  font-weight: 600;
+  padding: 7px 10px 5px;
+  border-bottom: 1px solid var(--rule);
+}
+.provenance td {
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+  line-height: 1.45;
+}
+.provenance tr:last-child td { border-bottom: 0; }
+.provenance td.f { font-family: var(--mono); font-size: 10px; color: var(--ink); white-space: nowrap; }
+.provenance td.v { font-family: var(--mono); font-size: 10.5px; color: var(--cyan); font-weight: 600; white-space: nowrap; }
+
+/* ---------- composer ----------------------------------------------------- */
+
+.composer {
+  border-top: 1px solid var(--rule-2);
+  background: var(--paper-2);
+  padding: 9px 12px 11px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 9px;
+}
+.chip {
+  appearance: none;
+  border: 1px solid var(--rule-2);
+  background: var(--paper);
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-size: 11.5px;
+  color: var(--ink-2);
+  cursor: pointer;
+  text-align: left;
+  line-height: 1.3;
+  transition: background .14s var(--ease), border-color .14s var(--ease), color .14s var(--ease);
+}
+.chip:hover:not(:disabled) {
+  background: var(--cyan-wash);
+  border-color: var(--cyan-2);
+  color: var(--cyan);
+}
+.chip:disabled { opacity: .45; cursor: default; }
+
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--rule-2);
+  background: var(--paper);
+  border-radius: var(--r);
+  padding: 3px 3px 3px 11px;
+  transition: border-color .14s var(--ease), box-shadow .14s var(--ease);
+}
+.input-row:focus-within {
+  border-color: var(--cyan-2);
+  box-shadow: 0 0 0 3px var(--cyan-wash);
+}
+.input-row .glyph {
+  font-family: var(--mono);
+  color: var(--cyan);
+  font-size: 13px;
+  flex: none;
+}
+#queryInput {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-family: var(--sans);
+  font-size: 13.5px;
+  color: var(--ink);
+  padding: 8px 0;
+  min-width: 0;
+}
+#queryInput::placeholder { color: var(--ink-4); }
+#askBtn {
+  appearance: none;
+  border: 0;
+  background: var(--amber);
+  color: #fff;
+  border-radius: 3px;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  flex: none;
+  transition: background .14s var(--ease);
+}
+#askBtn:hover:not(:disabled) { background: var(--amber-2); }
+#askBtn:disabled { background: var(--ink-4); cursor: default; }
+
+.composer-foot {
+  margin-top: 8px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink-4);
+  line-height: 1.5;
+  letter-spacing: .02em;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+.composer-foot .rule-dot { color: var(--amber); }
+
+/* ---------- empty state -------------------------------------------------- */
+
+.empty {
+  border: 1px dashed var(--rule-2);
+  border-radius: var(--r);
+  padding: 16px 14px;
+  background: #FBF8F0;
+}
+.empty h3 {
+  margin: 0 0 6px;
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 400;
+}
+.empty p {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  line-height: 1.55;
+}
+.empty p:last-child { margin-bottom: 0; }
+.empty .hint {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-4);
+  line-height: 1.6;
+}
+.empty kbd {
+  font-family: var(--mono);
+  font-size: 10px;
+  border: 1px solid var(--rule-2);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  padding: 1px 4px;
+  background: var(--paper);
+  color: var(--ink-2);
+}
+
+/* ---------- error card --------------------------------------------------- */
+
+.err-card {
+  border: 1px solid var(--alert);
+  border-left-width: 3px;
+  border-radius: var(--r);
+  background: var(--alert-wash);
+  padding: 11px 13px;
+}
+.err-card h4 {
+  margin: 0 0 5px;
+  font-size: 13px;
+  color: var(--alert);
+}
+.err-card p {
+  margin: 0 0 9px;
+  font-size: 12px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+.err-card code {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-2);
+  display: block;
+  margin-bottom: 9px;
+  word-break: break-word;
+}
+
+/* ---------- responsive --------------------------------------------------- */
+
+/* Laptop / projector at 1280x720 is the primary target; below that the panels
+   stack so the app is still usable on a smaller screen. */
+@media (max-width: 1080px) {
+  .main {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .panel-map { border-right: 0; border-bottom: 1px solid var(--rule-2); }
+  .topbar { gap: 10px; }
+  .topbar-meta { display: none; }
+}
+
+@media (max-width: 780px) {
+  .brand .sub { display: none; }
+  .demo-stamp span.long { display: none; }
+  .toolbar { gap: 8px; padding: 7px 9px; }
+  .tool-label { display: none; }
+}
+
+/* Shorter viewports: trim vertical padding so the composer never gets pushed
+   off a 720px-tall projector. */
+@media (max-height: 760px) {
+  .chat-head { padding: 8px 14px 7px; }
+  .chat-head p { display: none; }
+  .messages { padding: 11px; gap: 13px; }
+  .composer { padding: 8px 11px 9px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ================= header ================= -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark">SQ</span>
+      <span class="name">SatQuery AI</span>
+      <span class="sub">SIH26167</span>
+    </div>
+
+    <nav class="scenarios" id="scenarios" aria-label="Scenario"></nav>
+
+    <span class="topbar-spacer"></span>
+
+    <!-- Permanent, non-dismissible. See CONTRACT.md INV-1/INV-2. -->
+    <div class="demo-stamp" role="note">
+      <b>DEMO BUILD</b>
+      <span class="long">— scripted scenarios, not live imagery</span>
+    </div>
+
+    <div class="topbar-meta" id="topbarMeta"></div>
+  </header>
+
+  <!-- ================= main ================= -->
+  <main class="main">
+
+    <!-- ---------- map panel ---------- -->
+    <section class="panel-map" aria-label="Imagery viewer">
+
+      <div class="toolbar">
+        <div class="tool-group">
+          <span class="tool-label">Layer</span>
+          <div class="seg" id="layerSeg" role="group" aria-label="Imagery layer"></div>
+        </div>
+
+        <div class="tool-group">
+          <span class="tool-label">Date</span>
+          <div class="seg" id="dateSeg" role="group" aria-label="Acquisition date"></div>
+        </div>
+
+        <div class="tool-group">
+          <button class="toggle" id="compareBtn" aria-pressed="false" title="Before / after swipe (C)">
+            <span class="dot"></span> Compare
+          </button>
+          <button class="toggle" id="vectorsBtn" aria-pressed="true" title="Roads, settlements and status (V)">
+            <span class="dot"></span> Vectors
+          </button>
+          <button class="toggle" id="aoiBtn" aria-pressed="false" title="Drag on the map to define an area of interest (A)">
+            <span class="dot"></span> Draw AOI
+          </button>
+        </div>
+      </div>
+
+      <div class="stage" id="stage">
+        <div class="layer layer-after"><canvas id="canvasAfter"></canvas></div>
+        <div class="layer layer-before" id="layerBefore"><canvas id="canvasBefore"></canvas></div>
+        <canvas class="overlay-canvas" id="overlay"></canvas>
+
+        <div class="compare-handle" id="compareHandle" hidden
+             role="slider" tabindex="0" aria-label="Before / after reveal"
+             aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+          <span class="compare-grip">&#9664;&#9654;</span>
+        </div>
+        <div class="compare-tag left" id="compareTagL" hidden></div>
+        <div class="compare-tag right" id="compareTagR" hidden></div>
+
+        <div class="map-legend" id="legend" hidden></div>
+
+        <div class="stage-badges">
+          <span class="badge synthetic">SYNTHETIC SCENE · procedurally generated</span>
+          <div class="scalebar"><span class="bar" id="scaleBar"></span><span id="scaleText">—</span></div>
+        </div>
+
+        <div class="stage-controls">
+          <button id="zoomIn" title="Zoom in (+)">+</button>
+          <button id="zoomOut" title="Zoom out (−)">&minus;</button>
+          <button id="zoomReset" class="wide" title="Reset view (0)">Reset</button>
+        </div>
+
+        <div class="stage-veil" id="veil">
+          <div class="veil-inner" id="veilInner">
+            <div class="veil-title">Generating scene</div>
+            <div>Rendering optical, SAR and water-index layers for both passes.</div>
+            <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="veil-step" id="veilStep">&nbsp;</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="map-footer" id="mapFooter"></div>
+    </section>
+
+    <!-- ---------- chat panel ---------- -->
+    <section class="panel-chat" aria-label="Query panel">
+      <div class="chat-head">
+        <h2 id="chatTitle">Ask the archive</h2>
+        <p id="chatBlurb"></p>
+        <div class="index-line" id="indexLine"></div>
+      </div>
+
+      <div class="messages" id="messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+
+      <div class="composer">
+        <div class="chips" id="chips"></div>
+        <form class="input-row" id="composerForm">
+          <span class="glyph" aria-hidden="true">&gt;</span>
+          <input id="queryInput" type="text" autocomplete="off" spellcheck="false"
+                 placeholder="Ask about this area&hellip;" aria-label="Your question">
+          <button id="askBtn" type="submit">Ask</button>
+        </form>
+        <div class="composer-foot">
+          <span class="rule-dot">&#9679;</span>
+          <span>Confidence is a real cosine similarity computed per query. Figures in answers are measured from the rendered scene, never asserted.</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script type="module">
+const __m = {};
+
+/* ===== src/scene.js ===== */
+__m["src/scene.js"] = (function () {
+
+/* ---------------------------------------------------------------------------
+ * scene.js — procedural scene model
+ *
+ * Builds a deterministic, seeded synthetic landscape for each demo scenario and
+ * exposes it as plain typed arrays + vector features. Nothing here is scripted
+ * copy or a hand-authored number: the scene is generated, and every figure the
+ * UI later shows is measured back off these arrays by analyzeScene().
+ *
+ * That separation is deliberate. CONTRACT.md INV-2 says an answer may not state
+ * a specific number that was not actually computed. In the real system those
+ * numbers come from the retrieval pipeline; here they come from measuring the
+ * same raster the user is looking at. Either way the number on screen traces to
+ * pixels on screen, which is the property that matters.
+ *
+ * No rendering happens in this file. See render.js.
+ * ------------------------------------------------------------------------- */
+
+const GRID = 384;                       // cells per side
+const GSD_M = 33.3;                     // ground sample distance, m/cell
+const AOI_KM = (GRID * GSD_M) / 1000;   // approx 12.8 km across
+
+/* Land cover classes rasterised into scene.cover */
+const COVER = {
+  SOIL: 0,
+  CROP_A: 1,
+  CROP_B: 2,
+  FOREST: 3,
+  URBAN: 4,
+  WATER: 5,
+  ROAD: 6,
+  BARE_ROCK: 7,
+};
+
+/* ---- deterministic randomness ------------------------------------------- */
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function hashSeed(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+/* Value noise with bilinear interpolation, then fBm on top of it. Cheap, and
+ * smooth enough that the terrain reads as terrain rather than as static. */
+function makeNoise(seed) {
+  const rnd = mulberry32(seed);
+  const SIZE = 256;
+  const grad = new Float32Array(SIZE * SIZE);
+  for (let i = 0; i < grad.length; i++) grad[i] = rnd();
+
+  function at(ix, iy) {
+    return grad[((iy & (SIZE - 1)) * SIZE) + (ix & (SIZE - 1))];
+  }
+
+  return function noise2(x, y) {
+    const x0 = Math.floor(x), y0 = Math.floor(y);
+    const fx = x - x0, fy = y - y0;
+    // smoothstep the interpolant so cell boundaries do not show as creases
+    const sx = fx * fx * (3 - 2 * fx);
+    const sy = fy * fy * (3 - 2 * fy);
+    const a = at(x0, y0), b = at(x0 + 1, y0);
+    const c = at(x0, y0 + 1), d = at(x0 + 1, y0 + 1);
+    const top = a + (b - a) * sx;
+    const bot = c + (d - c) * sx;
+    return top + (bot - top) * sy;
+  };
+}
+
+function makeFbm(seed) {
+  const n = makeNoise(seed);
+  return function fbm(x, y, octaves = 4, lacunarity = 2.0, gain = 0.5) {
+    let amp = 1, freq = 1, sum = 0, norm = 0;
+    for (let o = 0; o < octaves; o++) {
+      sum += n(x * freq, y * freq) * amp;
+      norm += amp;
+      amp *= gain;
+      freq *= lacunarity;
+    }
+    return sum / norm;
+  };
+}
+
+/* ---- small geometry helpers --------------------------------------------- */
+
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function polylineLengthKm(pts) {
+  let d = 0;
+  for (let i = 1; i < pts.length; i++) {
+    d += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  }
+  return (d * GSD_M) / 1000;
+}
+
+/* Walk a polyline at roughly one-cell steps, calling fn(x, y, t) at each sample. */
+function samplePolyline(pts, fn, stepCells = 1) {
+  const total = pts.length - 1;
+  for (let i = 0; i < total; i++) {
+    const p0 = pts[i], p1 = pts[i + 1];
+    const seg = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+    const steps = Math.max(1, Math.round(seg / stepCells));
+    for (let s = 0; s < steps; s++) {
+      const t = s / steps;
+      fn(lerp(p0[0], p1[0], t), lerp(p0[1], p1[1], t), (i + t) / total);
+    }
+  }
+  fn(pts[total][0], pts[total][1], 1);
+}
+
+function stampDisc(arr, cx, cy, r, value) {
+  const x0 = Math.max(0, Math.floor(cx - r)), x1 = Math.min(GRID - 1, Math.ceil(cx + r));
+  const y0 = Math.max(0, Math.floor(cy - r)), y1 = Math.min(GRID - 1, Math.ceil(cy + r));
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= r * r) arr[y * GRID + x] = value;
+    }
+  }
+}
+
+function stampRect(arr, cx, cy, w, h, angle, value) {
+  const ca = Math.cos(-angle), sa = Math.sin(-angle);
+  const rad = Math.ceil(Math.hypot(w, h) / 2) + 1;
+  const x0 = Math.max(0, Math.floor(cx - rad)), x1 = Math.min(GRID - 1, Math.ceil(cx + rad));
+  const y0 = Math.max(0, Math.floor(cy - rad)), y1 = Math.min(GRID - 1, Math.ceil(cy + rad));
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      const dx = x - cx, dy = y - cy;
+      const rx = dx * ca - dy * sa, ry = dx * sa + dy * ca;
+      if (Math.abs(rx) <= w / 2 && Math.abs(ry) <= h / 2) arr[y * GRID + x] = value;
+    }
+  }
+}
+
+/* ---- terrain ------------------------------------------------------------- */
+
+/* A meandering channel from top to bottom of the AOI, built from summed sines
+ * so it is smooth and reproducible rather than a random walk. */
+function meanderPath(seed, xCentre, amplitude, steps = 48) {
+  const rnd = mulberry32(seed);
+  const waves = [];
+  for (let k = 0; k < 3; k++) {
+    waves.push({
+      f: 0.6 + rnd() * 2.2,
+      p: rnd() * Math.PI * 2,
+      a: amplitude * (0.6 - k * 0.16) * (0.7 + rnd() * 0.6),
+    });
+  }
+  const pts = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    let x = xCentre;
+    for (const w of waves) x += Math.sin(t * Math.PI * 2 * w.f + w.p) * w.a;
+    pts.push([x, t * (GRID - 1)]);
+  }
+  return pts;
+}
+
+/* Distance-to-feature field, in cells. Computed by stamping the feature into a
+ * grid and running a two-pass chamfer transform — much cheaper than testing
+ * every cell against every segment, and accurate enough at this scale. */
+function distanceField(seedPts) {
+  const INF = 1e6;
+  const d = new Float32Array(GRID * GRID).fill(INF);
+  samplePolyline(seedPts, (x, y) => {
+    const ix = Math.round(x), iy = Math.round(y);
+    if (ix >= 0 && ix < GRID && iy >= 0 && iy < GRID) d[iy * GRID + ix] = 0;
+  }, 0.5);
+
+  const D1 = 1, D2 = 1.41421356;
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      const i = y * GRID + x;
+      let v = d[i];
+      if (y > 0) {
+        v = Math.min(v, d[i - GRID] + D1);
+        if (x > 0) v = Math.min(v, d[i - GRID - 1] + D2);
+        if (x < GRID - 1) v = Math.min(v, d[i - GRID + 1] + D2);
+      }
+      if (x > 0) v = Math.min(v, d[i - 1] + D1);
+      d[i] = v;
+    }
+  }
+  for (let y = GRID - 1; y >= 0; y--) {
+    for (let x = GRID - 1; x >= 0; x--) {
+      const i = y * GRID + x;
+      let v = d[i];
+      if (y < GRID - 1) {
+        v = Math.min(v, d[i + GRID] + D1);
+        if (x > 0) v = Math.min(v, d[i + GRID - 1] + D2);
+        if (x < GRID - 1) v = Math.min(v, d[i + GRID + 1] + D2);
+      }
+      if (x < GRID - 1) v = Math.min(v, d[i + 1] + D1);
+      d[i] = v;
+    }
+  }
+  return d;
+}
+
+/* Flood fill from cells already wet, spreading only into cells below `level`.
+ * Water that is not hydrologically connected to the channel does not fill —
+ * which is what stops the flood extent looking like a threshold artefact. */
+function connectedFill(elev, seedMask, level) {
+  const out = new Uint8Array(GRID * GRID);
+  const stack = [];
+  for (let i = 0; i < seedMask.length; i++) {
+    if (seedMask[i]) { out[i] = 1; stack.push(i); }
+  }
+  while (stack.length) {
+    const i = stack.pop();
+    const x = i % GRID, y = (i / GRID) | 0;
+    for (let k = 0; k < 4; k++) {
+      const nx = x + (k === 0 ? 1 : k === 1 ? -1 : 0);
+      const ny = y + (k === 2 ? 1 : k === 3 ? -1 : 0);
+      if (nx < 0 || ny < 0 || nx >= GRID || ny >= GRID) continue;
+      const j = ny * GRID + nx;
+      if (out[j] || elev[j] >= level) continue;
+      out[j] = 1;
+      stack.push(j);
+    }
+  }
+  return out;
+}
+
+/* ---- cloud ---------------------------------------------------------------
+ * The single best beat in the flood story is "the optical pass is unusable, so
+ * route to SAR". That claim is only worth making if the cloud figure behind it
+ * is real, so clouds are generated as a mask here and the percentage the UI
+ * quotes is counted off that mask rather than typed into a script.
+ * ------------------------------------------------------------------------ */
+
+function buildCloudMask(seed, targetFraction) {
+  const fbm = makeFbm(seed);
+  const field = new Float32Array(GRID * GRID);
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      // Two scales: broad cloud masses, plus ragged detail at the edges.
+      const broad = fbm(x / 90, y / 90, 3);
+      const detail = fbm(x / 22 + 300, y / 22 + 300, 4);
+      field[y * GRID + x] = broad * 0.72 + detail * 0.28;
+    }
+  }
+  // Pick the threshold that lands nearest the requested coverage, then report
+  // whatever coverage that actually produced.
+  const sample = Array.from({ length: 4096 }, (_, k) => field[(k * 977) % field.length]).sort((a, b) => a - b);
+  const cut = sample[Math.floor(clamp(1 - targetFraction, 0, 0.999) * (sample.length - 1))];
+
+  const mask = new Uint8Array(GRID * GRID);
+  const alpha = new Float32Array(GRID * GRID);
+  let n = 0;
+  for (let i = 0; i < field.length; i++) {
+    const d = field[i] - cut;
+    if (d > 0) { mask[i] = 1; n++; }
+    // Soft edge: opacity ramps over a narrow band around the threshold so the
+    // cloud margin is feathered rather than cut with a cookie cutter.
+    alpha[i] = clamp((d + 0.035) / 0.075, 0, 1);
+  }
+  return { mask, alpha, field, fraction: n / mask.length };
+}
+
+/* ---- scenario: flood ----------------------------------------------------- */
+
+function buildFloodScene(seed) {
+  const fbm = makeFbm(seed);
+  const rnd = mulberry32(seed ^ 0x9e3779b9);
+
+  const river = meanderPath(seed + 11, GRID * 0.46, GRID * 0.13);
+  const distRiver = distanceField(river);
+
+  // A tributary joining from the east, so the flood extent reads as dendritic
+  // rather than as a single ribbon.
+  const trib = [];
+  {
+    const jx = GRID * 0.62, jy = GRID * 0.58;
+    for (let i = 0; i <= 20; i++) {
+      const t = i / 20;
+      trib.push([
+        lerp(GRID * 0.98, jx, t) + Math.sin(t * 7.1) * 9 * (1 - t),
+        lerp(GRID * 0.30, jy, t) + Math.sin(t * 4.3 + 1.2) * 12 * (1 - t),
+      ]);
+    }
+  }
+  const distTrib = distanceField(trib);
+
+  const elev = new Float32Array(GRID * GRID);
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      const i = y * GRID + x;
+      const d = Math.min(distRiver[i], distTrib[i] * 1.15);
+      // Valley cross-section: rises with distance from the channel, capped so
+      // the uplands read as broadly flat rather than as a cone.
+      const valley = Math.pow(clamp(d / (GRID * 0.30), 0, 1), 0.72);
+      const relief = fbm(x / 46, y / 46, 5) - 0.5;
+      const regional = (y / GRID) * 0.06;          // gentle downstream gradient
+      elev[i] = clamp(valley * 0.78 + relief * 0.30 + regional, 0, 1);
+    }
+  }
+
+  // Baseline channel and monsoon flood extent, as two water levels.
+  const channelSeed = new Uint8Array(GRID * GRID);
+  for (let i = 0; i < elev.length; i++) if (elev[i] < 0.055) channelSeed[i] = 1;
+  const waterBefore = connectedFill(elev, channelSeed, 0.075);
+  const waterAfter = connectedFill(elev, waterBefore, 0.235);
+
+  /* --- land cover ------------------------------------------------------- */
+  const cover = new Uint8Array(GRID * GRID);
+  const parcel = new Int16Array(GRID * GRID).fill(-1);
+  const parcels = [];
+
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      const i = y * GRID + x;
+      const e = elev[i];
+      const veg = fbm(x / 28 + 40, y / 28 + 40, 3);
+      if (e > 0.78) cover[i] = COVER.BARE_ROCK;
+      else if (e > 0.60 && veg > 0.50) cover[i] = COVER.FOREST;
+      else cover[i] = COVER.SOIL;
+    }
+  }
+
+  // Agricultural parcels on the floodplain: jittered rotated rectangles laid
+  // out in loose bands.
+  {
+    let id = 0;
+    for (let by = 0; by < 13; by++) {
+      for (let bx = 0; bx < 13; bx++) {
+        const cx = (bx + 0.5) * (GRID / 13) + (rnd() - 0.5) * 12;
+        const cy = (by + 0.5) * (GRID / 13) + (rnd() - 0.5) * 12;
+        const ix = clamp(Math.round(cx), 0, GRID - 1);
+        const iy = clamp(Math.round(cy), 0, GRID - 1);
+        const e = elev[iy * GRID + ix];
+        if (e > 0.55 || e < 0.06) continue;         // farm the low ground only
+        const w = 16 + rnd() * 13, h = 11 + rnd() * 10;
+        const ang = (rnd() - 0.5) * 0.5;
+        const kind = rnd() < 0.55 ? COVER.CROP_A : COVER.CROP_B;
+        stampRect(cover, cx, cy, w, h, ang, kind);
+        stampRect(parcel, cx, cy, w, h, ang, id);
+        parcels.push({ id, cx, cy, kind, ang, tone: rnd(), rough: rnd() });
+        id++;
+      }
+    }
+  }
+
+  /* --- settlements ------------------------------------------------------- */
+  const placements = [
+    [0.22, 0.20], [0.70, 0.24], [0.30, 0.55],
+    [0.63, 0.62], [0.20, 0.84], [0.78, 0.86],
+  ];
+  const settlements = placements.map((w, k) => {
+    const cx = w[0] * GRID, cy = w[1] * GRID;
+    const r = 8 + rnd() * 5;
+    const blocks = 16 + Math.floor(rnd() * 10);
+    for (let b = 0; b < blocks; b++) {
+      const a = rnd() * Math.PI * 2;
+      const rr = Math.pow(rnd(), 0.6) * r;
+      stampRect(cover, cx + Math.cos(a) * rr, cy + Math.sin(a) * rr,
+        2 + rnd() * 3, 2 + rnd() * 3, (rnd() - 0.5) * 0.6, COVER.URBAN);
+    }
+    return { id: 'S' + (k + 1), x: cx, y: cy, r };
+  });
+
+  /* --- roads -------------------------------------------------------------- */
+  // A relief hub on high ground plus a link per settlement. Several links cross
+  // low ground, which is what makes the connectivity result interesting once
+  // the water rises.
+  const hub = { id: 'HUB', x: GRID * 0.90, y: GRID * 0.08 };
+
+  function quadPath(a, b, mx, my) {
+    const pts = [];
+    for (let i = 0; i <= 24; i++) {
+      const t = i / 24, u = 1 - t;
+      pts.push([
+        u * u * a.x + 2 * u * t * mx + t * t * b.x,
+        u * u * a.y + 2 * u * t * my + t * t * b.y,
+      ]);
+    }
+    return pts;
+  }
+
+  function lowestElevOnPath(pts) {
+    let lo = 1;
+    samplePolyline(pts, (x, y) => {
+      const i = clamp(Math.round(y), 0, GRID - 1) * GRID + clamp(Math.round(x), 0, GRID - 1);
+      if (elev[i] < lo) lo = elev[i];
+    }, 2);
+    return lo;
+  }
+
+  /* Highways get built on the highest alignment available; district roads
+   * follow the valley because that is where the villages are. Routing them
+   * differently is not decoration — it is why the connectivity answer comes
+   * out with a mix of open and cut links rather than all-or-nothing. */
+  function bend(a, b, cls) {
+    const candidates = [];
+    for (let k = 0; k < 14; k++) {
+      const mx = (a.x + b.x) / 2 + (rnd() - 0.5) * 90;
+      const my = (a.y + b.y) / 2 + (rnd() - 0.5) * 90;
+      candidates.push(quadPath(a, b, clamp(mx, 4, GRID - 5), clamp(my, 4, GRID - 5)));
+    }
+    if (cls === 'district') return candidates[0];
+    return candidates.reduce((best, p) =>
+      lowestElevOnPath(p) > lowestElevOnPath(best) ? p : best);
+  }
+
+  // Deliberately redundant: a real district network has more than one way into
+  // most places, so a cut link does not automatically strand a village. That
+  // redundancy is what makes the computed reachability result interesting
+  // rather than a foregone conclusion.
+  const roadDefs = [
+    ['R1', hub, settlements[0], 'state'],
+    ['R2', hub, settlements[1], 'national'],
+    ['R3', settlements[0], settlements[2], 'district'],
+    ['R4', settlements[1], settlements[3], 'district'],
+    ['R5', settlements[2], settlements[4], 'district'],
+    ['R6', settlements[3], settlements[5], 'district'],
+    ['R7', settlements[4], settlements[5], 'district'],
+    ['R8', settlements[1], settlements[2], 'state'],
+    ['R9', settlements[0], settlements[1], 'district'],
+    ['R10', hub, settlements[5], 'state'],
+  ];
+
+  const roads = roadDefs.map((d) => ({
+    id: d[0], cls: d[3],
+    pts: bend(d[1], d[2], d[3]),
+    from: d[1].id, to: d[2].id,
+  }));
+
+  for (const r of roads) {
+    samplePolyline(r.pts, (x, y) => {
+      stampDisc(cover, x, y, r.cls === 'national' ? 1.4 : 1.0, COVER.ROAD);
+    }, 0.6);
+  }
+
+  // Baseline channel written last so water always wins over anything drawn
+  // across it.
+  for (let i = 0; i < cover.length; i++) if (waterBefore[i]) cover[i] = COVER.WATER;
+
+  const changeMask = new Uint8Array(GRID * GRID);
+  for (let i = 0; i < changeMask.length; i++) {
+    changeMask[i] = waterAfter[i] && !waterBefore[i] ? 1 : 0;
+  }
+
+  return {
+    id: 'flood',
+    seed,
+    elev, cover, parcel, parcels,
+    waterBefore, waterAfter,
+    river, trib,
+    settlements, roads, hub,
+    changeMask,
+    // Pre-monsoon pass is near clear; the peak-event pass is under the storm.
+    cloudBefore: buildCloudMask(seed + 71, 0.04),
+    cloudAfter: buildCloudMask(seed + 72, 0.93),
+  };
+}
+
+/* ---- scenario: earthquake ------------------------------------------------ */
+
+function buildQuakeScene(seed) {
+  const fbm = makeFbm(seed);
+  const rnd = mulberry32(seed ^ 0x51ed270b);
+
+  const elev = new Float32Array(GRID * GRID);
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      elev[y * GRID + x] = clamp(0.35 + (fbm(x / 70, y / 70, 4) - 0.5) * 0.55, 0, 1);
+    }
+  }
+
+  const cover = new Uint8Array(GRID * GRID);
+  for (let i = 0; i < cover.length; i++) cover[i] = COVER.SOIL;
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      const i = y * GRID + x;
+      if (fbm(x / 26 + 7, y / 26 + 7, 3) > 0.58) cover[i] = COVER.FOREST;
+    }
+  }
+
+  // A dense town laid out on an irregular street grid.
+  const blocks = [];
+  const originX = GRID * 0.14, originY = GRID * 0.16;
+  const cols = 11, rows = 11, cell = (GRID * 0.72) / cols;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (rnd() < 0.08) continue;                    // open ground / maidan
+      const cx = originX + (c + 0.5) * cell + (rnd() - 0.5) * 4;
+      const cy = originY + (r + 0.5) * cell + (rnd() - 0.5) * 4;
+      const w = cell * (0.60 + rnd() * 0.22);
+      const h = cell * (0.60 + rnd() * 0.22);
+      blocks.push({ id: 'B' + r + '-' + c, cx, cy, w, h });
+      stampRect(cover, cx, cy, w, h, 0.04, COVER.URBAN);
+    }
+  }
+
+  // Street grid between blocks.
+  const roads = [];
+  for (let c = 0; c <= cols; c++) {
+    const x = originX + c * cell;
+    roads.push({
+      id: 'V' + c, cls: 'street',
+      pts: [[x, originY - cell * 0.4], [x, originY + rows * cell]],
+    });
+  }
+  for (let r = 0; r <= rows; r++) {
+    const y = originY + r * cell;
+    roads.push({
+      id: 'H' + r, cls: 'street',
+      pts: [[originX - cell * 0.4, y], [originX + cols * cell, y]],
+    });
+  }
+  const arterialY = originY + Math.floor(rows / 2) * cell;
+  roads.push({
+    id: 'A1', cls: 'national',
+    pts: [[0, arterialY + 6], [GRID * 0.4, arterialY - 4], [GRID - 1, arterialY + 10]],
+  });
+  for (const r of roads) {
+    samplePolyline(r.pts, (x, y) => {
+      stampDisc(cover, x, y, r.cls === 'national' ? 1.5 : 0.9, COVER.ROAD);
+    }, 0.6);
+  }
+
+  // Damage severity: strongest along a rupture trace, modulated by noise so it
+  // is patchy rather than a clean band.
+  const rupture = meanderPath(seed + 5, GRID * 0.52, GRID * 0.07);
+  const distRupture = distanceField(rupture);
+  const severity = new Float32Array(GRID * GRID);
+  for (let i = 0; i < severity.length; i++) {
+    if (cover[i] !== COVER.URBAN) continue;
+    const x = i % GRID, y = (i / GRID) | 0;
+    const near = Math.exp(-Math.pow(distRupture[i] / (GRID * 0.16), 2));
+    const patch = fbm(x / 22 + 90, y / 22 + 90, 3);
+    severity[i] = clamp(near * 1.25 * (0.35 + patch), 0, 1);
+  }
+
+  const changeMask = new Uint8Array(GRID * GRID);
+  for (let i = 0; i < changeMask.length; i++) changeMask[i] = severity[i] > 0.55 ? 1 : 0;
+
+  // Aggregate severity per block so the analysis can talk about blocks rather
+  // than pixels.
+  for (const b of blocks) {
+    let sum = 0, n = 0;
+    const x0 = Math.max(0, Math.round(b.cx - b.w / 2)), x1 = Math.min(GRID - 1, Math.round(b.cx + b.w / 2));
+    const y0 = Math.max(0, Math.round(b.cy - b.h / 2)), y1 = Math.min(GRID - 1, Math.round(b.cy + b.h / 2));
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) { sum += severity[y * GRID + x]; n++; }
+    }
+    b.severity = n ? sum / n : 0;
+  }
+
+  return {
+    id: 'quake',
+    seed,
+    elev, cover, parcel: new Int16Array(GRID * GRID).fill(-1), parcels: [],
+    waterBefore: new Uint8Array(GRID * GRID),
+    waterAfter: new Uint8Array(GRID * GRID),
+    severity, blocks, roads, rupture,
+    settlements: [{ id: 'S1', x: GRID * 0.5, y: GRID * 0.5, r: 20 }],
+    hub: null,
+    changeMask,
+    cloudBefore: buildCloudMask(seed + 71, 0.03),
+    cloudAfter: buildCloudMask(seed + 72, 0.11),
+  };
+}
+
+/* ---- scenario: infrastructure change ------------------------------------- */
+
+function buildInfraScene(seed) {
+  const fbm = makeFbm(seed);
+
+  const elev = new Float32Array(GRID * GRID);
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      // Ridge-and-valley terrain: a folded belt running NE to SW.
+      const fold = Math.sin((x * 0.55 + y * 0.35) / 26) * 0.5 + 0.5;
+      const relief = fbm(x / 40, y / 40, 5);
+      elev[y * GRID + x] = clamp(fold * 0.45 + relief * 0.55, 0, 1);
+    }
+  }
+
+  const cover = new Uint8Array(GRID * GRID);
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      const i = y * GRID + x;
+      const e = elev[i];
+      const veg = fbm(x / 24 + 12, y / 24 + 12, 3);
+      if (e > 0.72) cover[i] = COVER.BARE_ROCK;
+      else if (veg > 0.50 && e > 0.35) cover[i] = COVER.FOREST;
+      else cover[i] = COVER.SOIL;
+    }
+  }
+
+  // Existing alignment, present at both dates.
+  const existing = {
+    id: 'E1', cls: 'district',
+    pts: Array.from({ length: 26 }, (_, i) => {
+      const t = i / 25;
+      return [
+        lerp(GRID * 0.06, GRID * 0.44, t),
+        lerp(GRID * 0.88, GRID * 0.52, t) + Math.sin(t * 6) * 10,
+      ];
+    }),
+  };
+  samplePolyline(existing.pts, (x, y) => stampDisc(cover, x, y, 1.0, COVER.ROAD), 0.6);
+
+  // New alignment plus hardstanding, present only at the later date. This is
+  // the change the scenario is about.
+  const newRoad = {
+    id: 'N1', cls: 'new',
+    pts: Array.from({ length: 30 }, (_, i) => {
+      const t = i / 29;
+      return [
+        lerp(GRID * 0.44, GRID * 0.94, t),
+        lerp(GRID * 0.52, GRID * 0.16, t) + Math.sin(t * 4.2 + 1) * 14,
+      ];
+    }),
+  };
+  const newSites = [
+    { id: 'P1', cx: GRID * 0.72, cy: GRID * 0.34, w: 26, h: 18 },
+    { id: 'P2', cx: GRID * 0.88, cy: GRID * 0.21, w: 17, h: 13 },
+  ];
+
+  const coverAfter = Uint8Array.from(cover);
+  samplePolyline(newRoad.pts, (x, y) => stampDisc(coverAfter, x, y, 1.3, COVER.ROAD), 0.6);
+  for (const s of newSites) stampRect(coverAfter, s.cx, s.cy, s.w, s.h, 0.12, COVER.BARE_ROCK);
+
+  const changeMask = new Uint8Array(GRID * GRID);
+  for (let i = 0; i < changeMask.length; i++) changeMask[i] = cover[i] !== coverAfter[i] ? 1 : 0;
+
+  return {
+    id: 'infra',
+    seed,
+    elev, cover, coverAfter,
+    parcel: new Int16Array(GRID * GRID).fill(-1), parcels: [],
+    waterBefore: new Uint8Array(GRID * GRID),
+    waterAfter: new Uint8Array(GRID * GRID),
+    roads: [existing, newRoad],
+    newRoad, newSites,
+    settlements: [],
+    hub: null,
+    changeMask,
+    cloudBefore: buildCloudMask(seed + 71, 0.02),
+    cloudAfter: buildCloudMask(seed + 72, 0.06),
+  };
+}
+
+/* ---- public builder ------------------------------------------------------ */
+
+const _sceneCache = new Map();
+
+function buildScene(scenarioId) {
+  if (_sceneCache.has(scenarioId)) return _sceneCache.get(scenarioId);
+  const seed = hashSeed('satquery::' + scenarioId);
+  let scene;
+  if (scenarioId === 'quake') scene = buildQuakeScene(seed);
+  else if (scenarioId === 'infra') scene = buildInfraScene(seed);
+  else scene = buildFloodScene(seed);
+  _sceneCache.set(scenarioId, scene);
+  return scene;
+}
+
+/* ---- measurement --------------------------------------------------------- */
+
+const CELL_KM2 = (GSD_M * GSD_M) / 1e6;
+const CELL_HA = (GSD_M * GSD_M) / 1e4;
+
+function bboxOfMask(mask, minCells = 40) {
+  let x0 = GRID, y0 = GRID, x1 = -1, y1 = -1, n = 0;
+  for (let i = 0; i < mask.length; i++) {
+    if (!mask[i]) continue;
+    n++;
+    const x = i % GRID, y = (i / GRID) | 0;
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
+  }
+  if (n < minCells) return null;
+  return { x0, y0, x1, y1, cells: n };
+}
+
+/* Largest connected component of a mask. Used to point the evidence overlay at
+ * the main body of change rather than at the union of every speckle. */
+function largestComponent(mask) {
+  const seen = new Uint8Array(mask.length);
+  let best = null;
+  const stack = [];
+  for (let s = 0; s < mask.length; s++) {
+    if (!mask[s] || seen[s]) continue;
+    stack.length = 0;
+    stack.push(s);
+    seen[s] = 1;
+    const cells = [];
+    while (stack.length) {
+      const i = stack.pop();
+      cells.push(i);
+      const x = i % GRID, y = (i / GRID) | 0;
+      for (let k = 0; k < 4; k++) {
+        const nx = x + (k === 0 ? 1 : k === 1 ? -1 : 0);
+        const ny = y + (k === 2 ? 1 : k === 3 ? -1 : 0);
+        if (nx < 0 || ny < 0 || nx >= GRID || ny >= GRID) continue;
+        const j = ny * GRID + nx;
+        if (!mask[j] || seen[j]) continue;
+        seen[j] = 1;
+        stack.push(j);
+      }
+    }
+    if (!best || cells.length > best.length) best = cells;
+  }
+  if (!best) return null;
+  const m = new Uint8Array(mask.length);
+  for (const i of best) m[i] = 1;
+  return { mask: m, bbox: bboxOfMask(m, 1) };
+}
+
+function countMask(mask) {
+  let n = 0;
+  for (let i = 0; i < mask.length; i++) if (mask[i]) n++;
+  return n;
+}
+
+/* The densest window of a mask, via a summed-area table. The largest connected
+ * component of a flood is usually the entire flood, which is useless as a
+ * pointer; what an analyst actually wants highlighted is where the change is
+ * most concentrated. This finds that. */
+function hotspotWindow(mask, win) {
+  const S = GRID + 1;
+  const sat = new Int32Array(S * S);
+  for (let y = 0; y < GRID; y++) {
+    let rowSum = 0;
+    for (let x = 0; x < GRID; x++) {
+      rowSum += mask[y * GRID + x] ? 1 : 0;
+      sat[(y + 1) * S + (x + 1)] = sat[y * S + (x + 1)] + rowSum;
+    }
+  }
+  const area = (x0, y0, x1, y1) =>
+    sat[(y1 + 1) * S + (x1 + 1)] - sat[y0 * S + (x1 + 1)] - sat[(y1 + 1) * S + x0] + sat[y0 * S + x0];
+
+  let best = null;
+  const step = Math.max(2, Math.floor(win / 8));
+  for (let y = 0; y + win < GRID; y += step) {
+    for (let x = 0; x + win < GRID; x += step) {
+      const c = area(x, y, x + win, y + win);
+      if (!best || c > best.cells) best = { x0: x, y0: y, x1: x + win, y1: y + win, cells: c };
+    }
+  }
+  return best && best.cells > 0 ? best : null;
+}
+
+/* Bounding box around a point, clipped to the grid. */
+function boxAround(cx, cy, half) {
+  return {
+    x0: Math.max(0, Math.round(cx - half)),
+    y0: Math.max(0, Math.round(cy - half)),
+    x1: Math.min(GRID - 1, Math.round(cx + half)),
+    y1: Math.min(GRID - 1, Math.round(cy + half)),
+  };
+}
+
+/* Point on a polyline at normalised position t. */
+function pointAt(pts, t) {
+  let found = pts[0];
+  samplePolyline(pts, (x, y, tt) => {
+    if (tt <= t) found = [x, y];
+  }, 1);
+  return found;
+}
+
+/* Road status is measured, not assigned: sample the centreline and count how
+ * many samples fall inside the water mask. */
+function roadStatus(road, mask) {
+  let wet = 0, total = 0;
+  let firstWet = null, lastWet = null;
+  samplePolyline(road.pts, (x, y, t) => {
+    total++;
+    const ix = clamp(Math.round(x), 0, GRID - 1);
+    const iy = clamp(Math.round(y), 0, GRID - 1);
+    if (mask[iy * GRID + ix]) {
+      wet++;
+      if (firstWet === null) firstWet = t;
+      lastWet = t;
+    }
+  }, 1);
+  const pct = total ? wet / total : 0;
+  const lengthKm = polylineLengthKm(road.pts);
+  return {
+    id: road.id, cls: road.cls,
+    length_km: +lengthKm.toFixed(2),
+    submerged_pct: +(pct * 100).toFixed(1),
+    submerged_km: +(lengthKm * pct).toFixed(2),
+    status: pct >= 0.08 ? 'impassable' : pct >= 0.02 ? 'restricted' : 'open',
+    breach_at: firstWet === null ? null : [+firstWet.toFixed(3), +lastWet.toFixed(3)],
+  };
+}
+
+/* BFS over the road graph from the relief hub, using only links whose measured
+ * submergence leaves them passable. */
+function reachableSet(scene, passableIds) {
+  const adj = new Map();
+  const add = (a, b) => {
+    if (!adj.has(a)) adj.set(a, []);
+    adj.get(a).push(b);
+  };
+  for (const r of scene.roads) {
+    if (!passableIds.has(r.id)) continue;
+    add(r.from, r.to);
+    add(r.to, r.from);
+  }
+  const seen = new Set([scene.hub.id]);
+  const q = [scene.hub.id];
+  while (q.length) {
+    const n = q.shift();
+    for (const to of adj.get(n) || []) {
+      if (seen.has(to)) continue;
+      seen.add(to);
+      q.push(to);
+    }
+  }
+  return seen;
+}
+
+function reachability(scene, roadStates) {
+  if (!scene.hub) return null;
+  const passable = new Set(
+    roadStates.filter((r) => r.status !== 'impassable').map((r) => r.id)
+  );
+  const seen = reachableSet(scene, passable);
+  return scene.settlements.map((s) => ({
+    id: s.id, reachable: seen.has(s.id),
+  }));
+}
+
+/* For each cut link, how many additional settlements would reconnect if that
+ * one link were restored. This is the output an actual relief cell wants — not
+ * "here is the damage" but "here is where to put the first bridging unit" —
+ * and it is a plain re-run of the BFS per candidate edge, not a judgement. */
+function restorationPriority(scene, roadStates) {
+  if (!scene.hub) return null;
+  const passable = new Set(
+    roadStates.filter((r) => r.status !== 'impassable').map((r) => r.id)
+  );
+  const base = reachableSet(scene, passable);
+  const cut = roadStates.filter((r) => r.status === 'impassable');
+
+  return cut
+    .map((r) => {
+      const trial = new Set(passable);
+      trial.add(r.id);
+      const after = reachableSet(scene, trial);
+      const gained = scene.settlements
+        .filter((s) => !base.has(s.id) && after.has(s.id))
+        .map((s) => s.id);
+      return {
+        road_id: r.id,
+        submerged_km: r.submerged_km,
+        settlements_reconnected: gained.length,
+        settlement_ids: gained,
+      };
+    })
+    .sort((a, b) => b.settlements_reconnected - a.settlements_reconnected
+      || a.submerged_km - b.submerged_km);
+}
+
+/* Fraction of each settlement built-up footprint under water. */
+function settlementInundation(scene, mask) {
+  return scene.settlements.map((s) => {
+    let wet = 0, built = 0;
+    const r = Math.ceil(s.r);
+    const y0 = Math.max(0, Math.floor(s.y - r)), y1 = Math.min(GRID - 1, Math.ceil(s.y + r));
+    const x0 = Math.max(0, Math.floor(s.x - r)), x1 = Math.min(GRID - 1, Math.ceil(s.x + r));
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        if ((x - s.x) * (x - s.x) + (y - s.y) * (y - s.y) > r * r) continue;
+        const i = y * GRID + x;
+        if (scene.cover[i] === COVER.URBAN) {
+          built++;
+          if (mask[i]) wet++;
+        }
+      }
+    }
+    return {
+      id: s.id,
+      built_cells: built,
+      inundated_pct: built ? +((wet / built) * 100).toFixed(1) : 0,
+    };
+  });
+}
+
+/**
+ * Measure a scene. Everything returned here is derived from the arrays above —
+ * no figure in this object is authored by hand. The mock API turns these into
+ * answer text; a real API would return the equivalent from the pipeline.
+ */
+const _analysisCache = new Map();
+
+function analyzeScene(scenarioId) {
+  if (_analysisCache.has(scenarioId)) return _analysisCache.get(scenarioId);
+  const scene = buildScene(scenarioId);
+  let out;
+
+  if (scenarioId === 'flood') {
+    const beforeCells = countMask(scene.waterBefore);
+    const afterCells = countMask(scene.waterAfter);
+    const newCells = countMask(scene.changeMask);
+    const roadStates = scene.roads.map((r) => roadStatus(r, scene.waterAfter));
+
+    let cropFlooded = 0, cropTotal = 0;
+    for (let i = 0; i < scene.cover.length; i++) {
+      const c = scene.cover[i];
+      if (c === COVER.CROP_A || c === COVER.CROP_B) {
+        cropTotal++;
+        if (scene.waterAfter[i]) cropFlooded++;
+      }
+    }
+
+    const inund = settlementInundation(scene, scene.waterAfter);
+    const worstSettlement = inund.slice().sort((a, b) => b.inundated_pct - a.inundated_pct)[0];
+    const worstRoad = roadStates.slice().sort((a, b) => b.submerged_pct - a.submerged_pct)[0];
+    const hot = hotspotWindow(scene.changeMask, 96);
+
+    /* Evidence regions are derived, not placed by hand: the densest window of
+     * new water, the worst-inundated settlement, and the point on the worst
+     * road where the centreline first enters the water.
+     *
+     * Each carries a bbox, what it refers to, and the numbers behind it — but
+     * no prose. The wording is the mock API's job, so that every string a user
+     * reads lives in one module. */
+    const evidence = [];
+    if (hot) {
+      evidence.push({
+        id: 'E1', kind: 'extent', bbox: hot,
+        metrics: {
+          km2: +(hot.cells * CELL_KM2).toFixed(2),
+          window_km: +((hot.x1 - hot.x0) * GSD_M / 1000).toFixed(1),
+        },
+      });
+    }
+    if (worstSettlement && worstSettlement.inundated_pct > 0) {
+      const s = scene.settlements.find((x) => x.id === worstSettlement.id);
+      evidence.push({
+        id: 'E2', kind: 'settlement', ref: worstSettlement.id,
+        bbox: boxAround(s.x, s.y, s.r * 1.9),
+        metrics: { inundated_pct: worstSettlement.inundated_pct },
+      });
+    }
+    if (worstRoad && worstRoad.breach_at) {
+      const road = scene.roads.find((r) => r.id === worstRoad.id);
+      const p = pointAt(road.pts, worstRoad.breach_at[0]);
+      evidence.push({
+        id: 'E3', kind: 'breach', ref: worstRoad.id,
+        bbox: boxAround(p[0], p[1], 26),
+        metrics: {
+          submerged_km: worstRoad.submerged_km,
+          length_km: worstRoad.length_km,
+        },
+      });
+    }
+
+    out = {
+      scenario: 'flood',
+      cloud_before_pct: +(scene.cloudBefore.fraction * 100).toFixed(1),
+      cloud_after_pct: +(scene.cloudAfter.fraction * 100).toFixed(1),
+      aoi_km2: +(GRID * GRID * CELL_KM2).toFixed(1),
+      water_before_km2: +(beforeCells * CELL_KM2).toFixed(2),
+      water_after_km2: +(afterCells * CELL_KM2).toFixed(2),
+      new_water_km2: +(newCells * CELL_KM2).toFixed(2),
+      new_water_pct_of_aoi: +((newCells / (GRID * GRID)) * 100).toFixed(1),
+      cropland_inundated_ha: +(cropFlooded * CELL_HA).toFixed(0),
+      cropland_inundated_pct: cropTotal ? +((cropFlooded / cropTotal) * 100).toFixed(1) : 0,
+      roads: roadStates,
+      roads_impassable: roadStates.filter((r) => r.status === 'impassable').length,
+      roads_restricted: roadStates.filter((r) => r.status === 'restricted').length,
+      roads_open: roadStates.filter((r) => r.status === 'open').length,
+      roads_total: roadStates.length,
+      worst_road: worstRoad,
+      reachability: reachability(scene, roadStates),
+      restoration_priority: restorationPriority(scene, roadStates),
+      settlements: inund,
+      worst_settlement: worstSettlement,
+      evidence,
+      full_extent: bboxOfMask(scene.changeMask),
+    };
+  } else if (scenarioId === 'quake') {
+    let urbanCells = 0, severeCells = 0;
+    for (let i = 0; i < scene.cover.length; i++) {
+      if (scene.cover[i] === COVER.URBAN) {
+        urbanCells++;
+        if (scene.severity[i] > 0.55) severeCells++;
+      }
+    }
+    const severeBlocks = scene.blocks.filter((b) => b.severity > 0.42);
+    const arterial = scene.roads.find((r) => r.cls === 'national');
+
+    /* The arterial itself carries no damage value — roads are not buildings.
+     * What blocks a road after a quake is debris from what stood beside it, so
+     * sample a corridor either side of the centreline instead. */
+    let arterialAffected = 0, arterialTotal = 0;
+    const CORRIDOR = 4;
+    samplePolyline(arterial.pts, (x, y) => {
+      arterialTotal++;
+      let worst = 0;
+      for (let dy = -CORRIDOR; dy <= CORRIDOR; dy++) {
+        for (let dx = -CORRIDOR; dx <= CORRIDOR; dx++) {
+          const ix = clamp(Math.round(x + dx), 0, GRID - 1);
+          const iy = clamp(Math.round(y + dy), 0, GRID - 1);
+          const s = scene.severity[iy * GRID + ix];
+          if (s > worst) worst = s;
+        }
+      }
+      if (worst > 0.55) arterialAffected++;
+    }, 1);
+
+    const hot = hotspotWindow(scene.changeMask, 88);
+    const worstBlock = severeBlocks.slice().sort((a, b) => b.severity - a.severity)[0];
+    const evidence = [];
+    if (hot) {
+      evidence.push({
+        id: 'E1', kind: 'damage_extent', bbox: hot,
+        metrics: { km2: +(hot.cells * CELL_KM2).toFixed(2) },
+      });
+    }
+    if (worstBlock) {
+      evidence.push({
+        id: 'E2', kind: 'block', ref: worstBlock.id,
+        bbox: boxAround(worstBlock.cx, worstBlock.cy, Math.max(worstBlock.w, worstBlock.h)),
+        metrics: { severity: +worstBlock.severity.toFixed(2) },
+      });
+    }
+
+    out = {
+      scenario: 'quake',
+      cloud_before_pct: +(scene.cloudBefore.fraction * 100).toFixed(1),
+      cloud_after_pct: +(scene.cloudAfter.fraction * 100).toFixed(1),
+      aoi_km2: +(GRID * GRID * CELL_KM2).toFixed(1),
+      builtup_km2: +(urbanCells * CELL_KM2).toFixed(2),
+      severe_damage_km2: +(severeCells * CELL_KM2).toFixed(2),
+      severe_damage_pct_of_builtup: urbanCells ? +((severeCells / urbanCells) * 100).toFixed(1) : 0,
+      blocks_total: scene.blocks.length,
+      blocks_severe: severeBlocks.length,
+      worst_blocks: severeBlocks.slice().sort((a, b) => b.severity - a.severity).slice(0, 3)
+        .map((b) => ({ id: b.id, severity: +b.severity.toFixed(3) })),
+      arterial_affected_pct: arterialTotal ? +((arterialAffected / arterialTotal) * 100).toFixed(1) : 0,
+      arterial_id: arterial.id,
+      evidence,
+      full_extent: bboxOfMask(scene.changeMask),
+    };
+  } else {
+    let newCells = 0, forestLost = 0;
+    for (let i = 0; i < scene.cover.length; i++) {
+      if (scene.changeMask[i]) {
+        newCells++;
+        if (scene.cover[i] === COVER.FOREST) forestLost++;
+      }
+    }
+    const evidence = [{
+      id: 'E1', kind: 'alignment',
+      bbox: bboxOfMask(scene.changeMask, 1),
+      metrics: { km: +polylineLengthKm(scene.newRoad.pts).toFixed(2) },
+    }];
+    for (const s of scene.newSites) {
+      evidence.push({
+        id: s.id, kind: 'site', ref: s.id,
+        bbox: boxAround(s.cx, s.cy, Math.max(s.w, s.h) * 0.9),
+        metrics: { area_ha: +((s.w * s.h) * CELL_HA).toFixed(1) },
+      });
+    }
+
+    out = {
+      scenario: 'infra',
+      cloud_before_pct: +(scene.cloudBefore.fraction * 100).toFixed(1),
+      cloud_after_pct: +(scene.cloudAfter.fraction * 100).toFixed(1),
+      aoi_km2: +(GRID * GRID * CELL_KM2).toFixed(1),
+      new_surface_ha: +(newCells * CELL_HA).toFixed(1),
+      new_alignment_km: +polylineLengthKm(scene.newRoad.pts).toFixed(2),
+      vegetation_cleared_ha: +(forestLost * CELL_HA).toFixed(1),
+      new_sites: scene.newSites.map((s) => ({
+        id: s.id, area_ha: +((s.w * s.h) * CELL_HA).toFixed(1),
+      })),
+      evidence,
+      full_extent: bboxOfMask(scene.changeMask),
+    };
+  }
+
+  _analysisCache.set(scenarioId, out);
+  return out;
+}
+  return { GRID: GRID, GSD_M: GSD_M, AOI_KM: AOI_KM, COVER: COVER, buildScene: buildScene, analyzeScene: analyzeScene, samplePolyline: samplePolyline, polylineLengthKm: polylineLengthKm, clamp: clamp, mulberry32: mulberry32, makeFbm: makeFbm, largestComponent: largestComponent };
+})();
+
+/* ===== src/render.js ===== */
+__m["src/render.js"] = (function () {
+  const { buildScene, GRID, COVER } = __m["src/scene.js"];
+/* ---------------------------------------------------------------------------
+ * render.js — turns a scene into imagery
+ *
+ * Three layers, two dates, one place. The whole point of the layer toggle is
+ * that a judge can see for themselves that different sensors answer different
+ * questions: the optical pass during the storm is cloud, the SAR pass through
+ * the same cloud is not, and water is unmistakable in SAR because a flat water
+ * surface reflects the radar away from the sensor.
+ *
+ * So the renderers here are physically motivated rather than decorative:
+ *   - optical   natural-colour composite, hillshaded, cloud where cloud is
+ *   - sar       backscatter by surface type, with multiplicative speckle
+ *   - water     NDWI when the optical pass is usable, SAR-derived water mask
+ *               when it is not — chosen per date, and labelled with whichever
+ *               it actually used
+ *
+ * Nothing in this file decides what the answer says. See api/mock.js.
+ * ------------------------------------------------------------------------- */
+
+
+
+/* Layer ids only. What they are called on screen is display copy, so it lives
+ * with the rest of the scripted content in api/mock.js — see LAYER_LABELS. */
+const LAYER_IDS = ['optical', 'sar', 'water'];
+
+/* Source resolution for every layer. 384 grid cells across this many pixels
+ * leaves enough headroom that flying to an evidence region stays near native
+ * resolution instead of upscaling into mush. Raising it further costs render
+ * time and memory for detail the 384-cell scene model does not contain. */
+const RENDER_PX = 1280;
+
+/* A small tile of hash noise, sampled with wrap. Calling fBm a million times
+ * per layer would be the one genuinely slow thing in this app; a repeating
+ * tile at this scale is indistinguishable and effectively free. */
+const NOISE_N = 256;
+const noiseTile = (() => {
+  const a = new Float32Array(NOISE_N * NOISE_N);
+  let s = 0x2f6e2b1;
+  for (let i = 0; i < a.length; i++) {
+    s = (Math.imul(s ^ (s >>> 15), s | 1) + 0x6d2b79f5) >>> 0;
+    a[i] = ((s ^ (s >>> 14)) >>> 0) / 4294967296;
+  }
+  return a;
+})();
+function tileNoise(x, y) {
+  return noiseTile[((y & (NOISE_N - 1)) * NOISE_N) + (x & (NOISE_N - 1))];
+}
+/* Sum of four decorrelated samples, giving something roughly Gaussian around
+ * 0.5 — used for speckle, which is what SAR noise actually looks like. */
+function softNoise(x, y) {
+  return (tileNoise(x, y) + tileNoise(x * 3 + 7, y * 5 + 11)
+    + tileNoise(x * 7 + 31, y * 2 + 59) + tileNoise(x * 11 + 97, y * 13 + 3)) / 4;
+}
+
+function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+
+/* Cultivated land has rows, and rows are what make a field read as a field
+ * rather than as a filled rectangle. Sampled in fractional grid coordinates so
+ * the texture survives being zoomed into — the scene model is only 384 cells
+ * across, so without this the imagery falls apart above about 2x. */
+function furrowAt(parcel, gxf, gyf) {
+  if (!parcel) return 0;
+  const ca = Math.cos(parcel.ang), sa = Math.sin(parcel.ang);
+  const along = gxf * ca + gyf * sa;
+  const across = -gxf * sa + gyf * ca;
+  // Two frequencies: the drill rows, and a slower banding across the field.
+  return Math.sin(across * 2.7 + parcel.tone * 6.3) * 0.62
+    + Math.sin(along * 0.55 + parcel.rough * 5.1) * 0.38;
+}
+
+/* Hillshade from the elevation grid. Vertical exaggeration is large on purpose:
+ * across 12.8 km the real relief here would be almost invisible, and terrain
+ * that reads as terrain is worth more to the demo than a defensible z-scale. */
+function hillshadeAt(elev, x, y, exaggeration) {
+  const xm = x > 0 ? x - 1 : x, xp = x < GRID - 1 ? x + 1 : x;
+  const ym = y > 0 ? y - 1 : y, yp = y < GRID - 1 ? y + 1 : y;
+  const dzdx = (elev[y * GRID + xp] - elev[y * GRID + xm]) * exaggeration;
+  const dzdy = (elev[yp * GRID + x] - elev[ym * GRID + x]) * exaggeration;
+  // Light from the north-west at roughly 45 degrees, the cartographic default.
+  const nz = 1 / Math.sqrt(dzdx * dzdx + dzdy * dzdy + 1);
+  const nx = -dzdx * nz, ny = -dzdy * nz;
+  const lx = -0.5735, ly = 0.5735, lz = 0.5848;
+  return clamp01((nx * lx + ny * ly + nz * lz) * 0.85 + 0.30);
+}
+
+/* ---- palettes ------------------------------------------------------------ */
+
+/* Natural-colour reflectances, deliberately desaturated and slightly warm —
+ * true-colour Sentinel-2 over a wet-season Indian delta is muted, not vivid. */
+const OPTICAL = {
+  [COVER.SOIL]:      [138, 121, 92],
+  [COVER.CROP_A]:    [ 86, 112,  60],
+  [COVER.CROP_B]:    [140, 137,  78],
+  [COVER.FOREST]:    [ 52,  76,  46],
+  [COVER.URBAN]:     [150, 143, 131],
+  [COVER.WATER]:     [ 44,  68,  76],
+  [COVER.ROAD]:      [163, 154, 139],
+  [COVER.BARE_ROCK]: [163, 154, 141],
+};
+
+/* Radar backscatter by surface, roughly ordered the way sigma-nought is:
+ * smooth surfaces scatter away from the sensor and read dark, volume
+ * scatterers read mid, and built-up double-bounce reads very bright. */
+const BACKSCATTER = {
+  [COVER.SOIL]:      0.30,
+  [COVER.CROP_A]:    0.44,
+  [COVER.CROP_B]:    0.39,
+  [COVER.FOREST]:    0.56,
+  [COVER.URBAN]:     0.86,
+  [COVER.WATER]:     0.045,
+  [COVER.ROAD]:      0.11,
+  [COVER.BARE_ROCK]: 0.47,
+};
+
+/* Synthetic green and NIR reflectance per surface, so NDWI is computed from
+ * band values rather than assigned from a lookup of "is this water". */
+const BANDS = {
+  [COVER.SOIL]:      { g: 0.14, nir: 0.25 },
+  [COVER.CROP_A]:    { g: 0.08, nir: 0.40 },
+  [COVER.CROP_B]:    { g: 0.10, nir: 0.35 },
+  [COVER.FOREST]:    { g: 0.05, nir: 0.38 },
+  [COVER.URBAN]:     { g: 0.17, nir: 0.20 },
+  [COVER.WATER]:     { g: 0.09, nir: 0.02 },
+  [COVER.ROAD]:      { g: 0.13, nir: 0.16 },
+  [COVER.BARE_ROCK]: { g: 0.21, nir: 0.27 },
+};
+
+/* ---- per-date scene view ------------------------------------------------- */
+
+/* The cover array plus whichever water mask and cloud mask belong to the
+ * requested date. Everything else about the place is identical between dates,
+ * which is what makes the compare slider legible. */
+function viewFor(scene, date) {
+  const after = date === 'after';
+  return {
+    cover: after && scene.coverAfter ? scene.coverAfter : scene.cover,
+    water: after ? scene.waterAfter : scene.waterBefore,
+    baselineWater: scene.waterBefore,
+    cloud: after ? scene.cloudAfter : scene.cloudBefore,
+    severity: after ? scene.severity : null,
+    after,
+  };
+}
+
+/* ---- optical ------------------------------------------------------------- */
+
+function drawOptical(scene, view, px) {
+  const img = new ImageData(px, px);
+  const d = img.data;
+  const scale = GRID / px;
+  const { elev } = scene;
+  const { cover, water, baselineWater, cloud } = view;
+
+  for (let py = 0; py < px; py++) {
+    const gyf = py * scale;
+    const gy = Math.min(GRID - 1, gyf | 0);
+    for (let pxi = 0; pxi < px; pxi++) {
+      const gxf = pxi * scale;
+      const gx = Math.min(GRID - 1, gxf | 0);
+      const gi = gy * GRID + gx;
+      const o = (py * px + pxi) * 4;
+
+      let r, g, b;
+      const isWater = water && water[gi];
+
+      if (isWater) {
+        // Depth proxy: how far below the surface level this cell sits. Deeper
+        // water reads darker and less turbid.
+        const depth = clamp01((0.235 - elev[gi]) * 5.2);
+        const fresh = baselineWater && !baselineWater[gi];
+        if (fresh) {
+          // Newly flooded ground carries suspended sediment, so it reads as a
+          // muddy olive-brown rather than as clean water.
+          r = 96 - depth * 34;
+          g = 92 - depth * 30;
+          b = 68 - depth * 18;
+        } else {
+          r = 48 - depth * 18;
+          g = 72 - depth * 26;
+          b = 82 - depth * 24;
+        }
+        const ripple = softNoise(pxi >> 1, py >> 1);
+        r += (ripple - 0.5) * 14;
+        g += (ripple - 0.5) * 14;
+        b += (ripple - 0.5) * 12;
+      } else {
+        const c = cover[gi];
+        const base = OPTICAL[c] || OPTICAL[COVER.SOIL];
+        // Per-parcel tone so neighbouring fields differ the way real ones do.
+        const pid = scene.parcel ? scene.parcel[gi] : -1;
+        const parcel = pid >= 0 && scene.parcels[pid] ? scene.parcels[pid] : null;
+        const parcelTone = parcel ? (parcel.tone - 0.5) * 0.30 : 0;
+        const furrow = furrowAt(parcel, gxf, gyf) * 0.055;
+        const grain = (softNoise(pxi, py) - 0.5) * 0.13
+          + (tileNoise(pxi, py) - 0.5) * 0.07;
+        const shade = hillshadeAt(elev, gx, gy, 26);
+        const k = (0.72 + shade * 0.52) * (1 + parcelTone + furrow + grain);
+        r = base[0] * k;
+        g = base[1] * k;
+        b = base[2] * k;
+
+        // Earthquake damage reads in optical as rubble: desaturated, brighter,
+        // with the block texture broken up.
+        if (view.severity && view.severity[gi] > 0.35) {
+          const s = clamp01((view.severity[gi] - 0.35) / 0.55);
+          const rub = 150 + (softNoise(pxi * 2, py * 2) - 0.5) * 60;
+          r += (rub - r) * s * 0.85;
+          g += (rub * 0.95 - g) * s * 0.85;
+          b += (rub * 0.88 - b) * s * 0.85;
+        }
+      }
+
+      // Atmospheric haze: a slight warm lift across the whole frame, which is
+      // what stops a synthetic composite looking like a screenshot of a map.
+      r = r * 0.94 + 15;
+      g = g * 0.94 + 15;
+      b = b * 0.94 + 17;
+
+      if (cloud) {
+        const a = cloud.alpha[gi];
+        if (a > 0) {
+          // Cloud shadow falls offset from the cloud itself, to the south-east.
+          const sx = Math.min(GRID - 1, gx + 7), sy = Math.min(GRID - 1, gy + 9);
+          const shadow = cloud.alpha[sy * GRID + sx] * 0.30;
+          r *= 1 - shadow; g *= 1 - shadow; b *= 1 - shadow;
+
+          const lumps = 0.82 + softNoise(pxi >> 1, py >> 1) * 0.34;
+          const cr = 236 * lumps, cg = 238 * lumps, cb = 242 * lumps;
+          r += (cr - r) * a; g += (cg - g) * a; b += (cb - b) * a;
+        }
+      }
+
+      d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 255;
+    }
+  }
+  return img;
+}
+
+/* ---- SAR ----------------------------------------------------------------- */
+
+function drawSar(scene, view, px) {
+  const img = new ImageData(px, px);
+  const d = img.data;
+  const scale = GRID / px;
+  const { elev } = scene;
+  const { cover, water } = view;
+
+  for (let py = 0; py < px; py++) {
+    const gyf = py * scale;
+    const gy = Math.min(GRID - 1, gyf | 0);
+    for (let pxi = 0; pxi < px; pxi++) {
+      const gxf = pxi * scale;
+      const gx = Math.min(GRID - 1, gxf | 0);
+      const gi = gy * GRID + gx;
+      const o = (py * px + pxi) * 4;
+
+      const wet = water && water[gi];
+      let sigma = wet
+        ? BACKSCATTER[COVER.WATER]
+        : (BACKSCATTER[cover[gi]] ?? BACKSCATTER[COVER.SOIL]);
+
+      // Neighbouring fields differ in radar because their moisture and crop
+      // stage differ, not only because of speckle. Without this, adjacent
+      // parcels are identical grey and the scene looks like flat blocks.
+      if (!wet && scene.parcel) {
+        const pid = scene.parcel[gi];
+        const parcel = pid >= 0 && scene.parcels[pid] ? scene.parcels[pid] : null;
+        if (parcel) {
+          sigma *= 0.74 + parcel.tone * 0.56;
+          sigma *= 1 + furrowAt(parcel, gxf, gyf) * 0.16;
+        }
+      }
+
+      // Terrain modulation in the range direction: slopes tilted towards the
+      // sensor brighten, slopes tilted away darken. This is what gives real SAR
+      // over relief its characteristic ribbed look.
+      const xm = gx > 0 ? gx - 1 : gx, xp = gx < GRID - 1 ? gx + 1 : gx;
+      const slopeRange = (elev[gy * GRID + xp] - elev[gy * GRID + xm]) * 34;
+      sigma *= clamp01(1 - slopeRange * 0.55) * 0.75 + 0.42;
+
+      // Built-up areas throw occasional very bright corner returns.
+      if (cover[gi] === COVER.URBAN && tileNoise(pxi * 5, py * 7) > 0.965) {
+        sigma = Math.min(1.35, sigma * 1.9);
+      }
+
+      // Speckle is multiplicative, not additive — this is the single detail
+      // that makes synthetic SAR read as SAR.
+      const speck = 0.55 + softNoise(pxi, py) * 0.92;
+      sigma *= speck;
+
+      // Damaged built-up scatters more chaotically and slightly brighter.
+      if (view.severity && view.severity[gi] > 0.4) {
+        sigma *= 1 + (softNoise(pxi * 3, py * 3) - 0.4) * 0.7;
+      }
+
+      // Log-ish stretch, the way a GRD product is normally displayed.
+      const v = clamp01(Math.pow(clamp01(sigma), 0.62)) * 255;
+      // A very slight cool cast; pure neutral grey reads as "unstyled" on a
+      // projector, and every SAR viewer in the wild has some tint.
+      d[o] = v * 0.985;
+      d[o + 1] = v * 0.995;
+      d[o + 2] = Math.min(255, v * 1.02 + 3);
+      d[o + 3] = 255;
+    }
+  }
+  return img;
+}
+
+/* ---- water index --------------------------------------------------------- */
+
+/* Which instrument can actually answer the water question on this date. Above
+ * roughly a quarter cloud, an optical index is not worth trusting, so the layer
+ * falls back to the SAR-derived mask and says so. */
+function waterMethodFor(scenarioId, date) {
+  const scene = buildScene(scenarioId);
+  const cloud = date === 'after' ? scene.cloudAfter : scene.cloudBefore;
+  // The decision is computed from the measured cloud fraction; how it is worded
+  // is api/mock.js's business.
+  return cloud.fraction > 0.25
+    ? { method: 'sar_mask', cloud_fraction: cloud.fraction }
+    : { method: 'ndwi', cloud_fraction: cloud.fraction };
+}
+
+function drawWater(scene, view, px, method) {
+  const img = new ImageData(px, px);
+  const d = img.data;
+  const scale = GRID / px;
+  const { elev } = scene;
+  const { cover, water, baselineWater } = view;
+
+  for (let py = 0; py < px; py++) {
+    const gy = Math.min(GRID - 1, (py * scale) | 0);
+    for (let pxi = 0; pxi < px; pxi++) {
+      const gx = Math.min(GRID - 1, (pxi * scale) | 0);
+      const gi = gy * GRID + gx;
+      const o = (py * px + pxi) * 4;
+
+      let index;      // -1 .. 1, positive means water
+      let base;       // greyscale backdrop
+
+      if (method === 'sar_mask') {
+        const sigma = water && water[gi]
+          ? BACKSCATTER[COVER.WATER]
+          : (BACKSCATTER[cover[gi]] ?? BACKSCATTER[COVER.SOIL]);
+        const speck = 0.6 + softNoise(pxi, py) * 0.8;
+        const obs = sigma * speck;
+        // Thresholding low backscatter is exactly how operational SAR flood
+        // mapping works, so the layer is showing the real decision rule.
+        index = obs < 0.11 ? 0.55 - obs : -0.4;
+        base = clamp01(Math.pow(clamp01(obs), 0.62)) * 210 + 12;
+      } else {
+        const b = water && water[gi] ? BANDS[COVER.WATER] : (BANDS[cover[gi]] || BANDS[COVER.SOIL]);
+        const jitter = (softNoise(pxi, py) - 0.5) * 0.06;
+        const g = b.g + jitter, nir = b.nir + jitter * 0.6;
+        index = (g - nir) / (g + nir + 1e-6);
+        const shade = hillshadeAt(elev, gx, gy, 26);
+        base = (0.42 + shade * 0.5) * 190;
+      }
+
+      let r = base * 0.96, gg = base * 0.95, bb = base * 0.99;
+
+      if (index > 0) {
+        const t = clamp01(index / 0.6);
+        // Baseline water in a steadier blue, newly detected water in cyan, so
+        // "what is new" is separable from "what is always wet" without relying
+        // on colour alone — the compare slider carries the same information.
+        const fresh = baselineWater && !baselineWater[gi];
+        const cr = fresh ? 34 : 26;
+        const cg = fresh ? 200 + t * 40 : 112 + t * 40;
+        const cb = fresh ? 214 + t * 34 : 178 + t * 42;
+        const a = 0.42 + t * 0.52;
+        r += (cr - r) * a; gg += (cg - gg) * a; bb += (cb - bb) * a;
+      }
+
+      d[o] = r; d[o + 1] = gg; d[o + 2] = bb; d[o + 3] = 255;
+    }
+  }
+  return img;
+}
+
+/* ---- public surface ------------------------------------------------------ */
+
+const _cache = new Map();
+
+function cacheKey(scenarioId, layer, date, px) {
+  return scenarioId + '|' + layer + '|' + date + '|' + px;
+}
+
+/**
+ * Render one layer of one date to a canvas. Cached: a given combination is
+ * generated once per session and reused for every subsequent paint, which is
+ * what keeps the compare slider at full frame rate.
+ */
+function renderLayer(scenarioId, layer, date, px = RENDER_PX) {
+  const key = cacheKey(scenarioId, layer, date, px);
+  if (_cache.has(key)) return _cache.get(key);
+
+  const scene = buildScene(scenarioId);
+  const view = viewFor(scene, date);
+
+  let img;
+  if (layer === 'sar') img = drawSar(scene, view, px);
+  else if (layer === 'water') img = drawWater(scene, view, px, waterMethodFor(scenarioId, date).method);
+  else img = drawOptical(scene, view, px);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = px;
+  canvas.height = px;
+  canvas.getContext('2d').putImageData(img, 0, 0);
+  _cache.set(key, canvas);
+  return canvas;
+}
+
+/**
+ * A cropped thumbnail as a data URL, used as the `image_url` on an API
+ * response so the evidence citation carries the pixels it is citing.
+ */
+function renderThumb(scenarioId, layer, date, bbox, outPx = 208) {
+  const src = renderLayer(scenarioId, layer, date);
+  const s = src.width / GRID;
+  const c = document.createElement('canvas');
+  c.width = outPx;
+  c.height = outPx;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+
+  if (bbox) {
+    // Square off the crop so the thumbnail is not distorted.
+    const w = Math.max(bbox.x1 - bbox.x0, bbox.y1 - bbox.y0) || GRID;
+    const cx = (bbox.x0 + bbox.x1) / 2, cy = (bbox.y0 + bbox.y1) / 2;
+    const half = (w * 0.72);
+    ctx.drawImage(src, (cx - half) * s, (cy - half) * s, half * 2 * s, half * 2 * s,
+      0, 0, outPx, outPx);
+  } else {
+    ctx.drawImage(src, 0, 0, outPx, outPx);
+  }
+  return c.toDataURL('image/jpeg', 0.72);
+}
+
+/**
+ * Render everything a scenario needs, yielding between layers so the loading
+ * indicator can actually paint. Returns the number of layers rendered.
+ */
+async function prewarm(scenarioId, onProgress) {
+  const combos = [];
+  for (const id of LAYER_IDS) for (const date of ['before', 'after']) combos.push([id, date]);
+  for (let i = 0; i < combos.length; i++) {
+    renderLayer(scenarioId, combos[i][0], combos[i][1]);
+    if (onProgress) onProgress((i + 1) / combos.length, combos[i]);
+    await new Promise((r) => requestAnimationFrame(() => r()));
+  }
+  return combos.length;
+}
+
+function isRendered(scenarioId, layer, date, px = RENDER_PX) {
+  return _cache.has(cacheKey(scenarioId, layer, date, px));
+}
+  return { LAYER_IDS: LAYER_IDS, RENDER_PX: RENDER_PX, waterMethodFor: waterMethodFor, renderLayer: renderLayer, renderThumb: renderThumb, prewarm: prewarm, isRendered: isRendered };
+})();
+
+/* ===== src/api/mock.js ===== */
+__m["src/api/mock.js"] = (function () {
+  const { analyzeScene, GRID, AOI_KM, GSD_M } = __m["src/scene.js"];
+  const { renderThumb, waterMethodFor, LAYER_IDS } = __m["src/render.js"];
+/* ---------------------------------------------------------------------------
+ * api/mock.js — the ONLY module containing scripted demo data
+ *
+ * Everything the app knows that did not come out of a measurement lives here:
+ * the tile index, the scenario fixtures, the answer templates, the starter
+ * questions, the trace step wording. Nothing else in the codebase hardcodes a
+ * response value. Replacing this file with a real client is the whole swap.
+ *
+ * The exported surface matches the shape pinned in CONTRACT.md:
+ *
+ *     query(text) -> { tile_id, confidence, answer, image_url, ... }
+ *
+ * Two things here are real rather than scripted, on purpose:
+ *
+ *   1. CONFIDENCE. CONTRACT.md INV-1 forbids a confidence number that was not
+ *      computed at request time. So the demo does not fake one: it runs an
+ *      actual TF-IDF vectoriser over the tile index and returns a real cosine
+ *      similarity between the query vector and the retrieved tile vector. The
+ *      vector space is lexical rather than CLIP, which is a much weaker model
+ *      than the real pipeline — but the number on screen is genuinely the
+ *      similarity that ranked that tile, and it moves when the query moves.
+ *      Type something off-topic and the confidence drops and the app says so.
+ *
+ *   2. EVERY FIGURE IN AN ANSWER. CONTRACT.md INV-2 forbids stating a specific
+ *      number the system did not compute. Every number interpolated into an
+ *      answer below comes from analyzeScene(), which measures the same raster
+ *      the user is looking at. There are no invented percentages in this file,
+ *      and the `provenance` array on each response says where each one came
+ *      from so a reviewer can check that claim without reading the source.
+ *
+ * What IS scripted: which scenarios exist, what the tiles are called, the
+ * sentence frames the numbers are dropped into, and the labels on the trace
+ * steps. That is the part a real backend replaces.
+ * ------------------------------------------------------------------------- */
+
+
+
+
+const IS_MOCK = true;
+const CONTRACT_VERSION = '1.1-demo';
+
+/* Below this cosine similarity the system declines to answer rather than
+ * guessing. A demo that says "I do not have evidence for that" when it does not
+ * is worth more than one that always produces a confident paragraph. */
+const CONFIDENCE_FLOOR = 0.17;
+
+/* ---- dates ---------------------------------------------------------------
+ * Derived from the clock so the demo never quotes a stale acquisition date.
+ * The "after" pass is recent enough that "in the last week" is literally true
+ * whenever this is presented. */
+
+function isoDate(d) { return d.toISOString().slice(0, 10); }
+function quarterOf(d) { return d.getUTCFullYear() + '-Q' + (Math.floor(d.getUTCMonth() / 3) + 1); }
+function daysAgo(n) {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - n);
+  return d;
+}
+function prettyDate(iso) {
+  const d = new Date(iso + 'T00:00:00Z');
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+
+const DATE_AFTER = daysAgo(2);
+const DATE_BEFORE = daysAgo(101);
+
+/* ---- scenario fixtures ---------------------------------------------------
+ * Place names, framing copy and starter questions. Per spec/decisions.md D-008
+ * the infrastructure scenario stays at monitoring and situational awareness. */
+
+const SCENARIOS = [
+  {
+    id: 'flood',
+    name: 'Flood response',
+    flag: 'Flagship',
+    aoi: 'AOI-01 · Periyar delta',
+    district: 'Lower delta district cell',
+    summary: 'Monsoon flood in a delta district. Optical is blind through the storm; SAR is not.',
+    state_code: 'KL',
+    tile_no: '114',
+    before_label: 'Pre-monsoon baseline',
+    after_label: 'Peak event pass',
+    starters: [
+      'Which areas are underwater right now?',
+      'Which roads are still passable to the relief staging point?',
+      'Why are you not using the optical imagery?',
+      'Which villages are cut off?',
+    ],
+  },
+  {
+    id: 'quake',
+    name: 'Earthquake damage',
+    aoi: 'AOI-02 · District town',
+    district: 'State disaster response cell',
+    summary: 'Structural damage assessment across a dense district town after a shallow event.',
+    state_code: 'UK',
+    tile_no: '207',
+    before_label: 'Pre-event baseline',
+    after_label: 'Post-event pass',
+    starters: [
+      'How much of the built-up area is severely damaged?',
+      'Is the arterial highway blocked?',
+      'Where is the damage concentrated?',
+    ],
+  },
+  {
+    id: 'infra',
+    name: 'Infrastructure change',
+    aoi: 'AOI-03 · Border sector terrain',
+    district: 'Terrain monitoring cell',
+    summary: 'Change monitoring over remote terrain: new alignments and cleared ground between passes.',
+    state_code: 'AR',
+    tile_no: '052',
+    before_label: 'Q1 baseline pass',
+    after_label: 'Current pass',
+    starters: [
+      'What has changed in this sector since the last pass?',
+      'How much new road has been built?',
+      'How much vegetation was cleared?',
+    ],
+  },
+];
+
+function getScenario(id) {
+  return SCENARIOS.find((s) => s.id === id) || SCENARIOS[0];
+}
+
+/* ---- display copy for the imagery layers ---------------------------------
+ * render.js knows how to draw each layer; what each one is called, and which
+ * instrument it stands for, is scripted content and belongs here. In a real
+ * build these come from the tile metadata for the AOI. */
+
+const LAYER_LABELS = {
+  optical: { name: 'Optical', hint: 'Sentinel-2 true colour' },
+  sar: { name: 'SAR', hint: 'Sentinel-1 VV backscatter' },
+  water: { name: 'Water index', hint: 'NDWI / SAR water mask' },
+};
+
+const WATER_METHOD_LABELS = {
+  sar_mask: {
+    label: 'SAR water mask · Sentinel-1 VV',
+    reason: 'optical index unusable under cloud',
+  },
+  ndwi: {
+    label: 'NDWI · (green − NIR) / (green + NIR)',
+    reason: 'optical pass usable',
+  },
+};
+
+/** The imagery layers, in toolbar order, with their display names. */
+const LAYERS = LAYER_IDS.map((id) => ({ id, ...LAYER_LABELS[id] }));
+
+/**
+ * Which index actually answered the water question for this pass, and why.
+ * The choice is measured in render.js from the cloud mask; the wording is here.
+ */
+function waterMethod(scenarioId, date) {
+  const m = waterMethodFor(scenarioId, date);
+  return { ...m, ...WATER_METHOD_LABELS[m.method] };
+}
+
+/* ---- gazetteer -----------------------------------------------------------
+ * Every human-readable place name in the app. scene.js generates geometry with
+ * opaque ids (S1, R4, HUB) and measures it; the names those ids are displayed
+ * under are scripted content, so they live here with the rest of it. A real
+ * build resolves these from a gazetteer or from the tile metadata instead.
+ */
+
+const PLACES = {
+  flood: {
+    HUB: 'Relief staging point',
+    S1: 'Kadapra', S2: 'Neelamperoor', S3: 'Cheruthana',
+    S4: 'Mankombu', S5: 'Veeyapuram', S6: 'Thakazhi',
+    R1: 'SH-11 Kadapra link',
+    R2: 'NH-183 river crossing',
+    R3: 'Cheruthana approach',
+    R4: 'Mankombu bund road',
+    R5: 'Veeyapuram causeway',
+    R6: 'Thakazhi ferry road',
+    R7: 'Delta ring road',
+    R8: 'Upland bypass',
+    R9: 'Kadapra-Neelamperoor link',
+    R10: 'Eastern trunk road',
+  },
+  quake: {
+    S1: 'District town',
+    A1: 'Arterial highway',
+  },
+  infra: {
+    E1: 'Existing metalled track',
+    N1: 'New graded alignment',
+    P1: 'Graded platform',
+    P2: 'Secondary hardstanding',
+  },
+};
+
+/** Display name for a scene feature id, falling back to the id itself. */
+function placeName(scenarioId, id) {
+  const table = PLACES[scenarioId];
+  return (table && table[id]) || id;
+}
+
+function names(scenarioId, ids) {
+  return (ids || []).map((id) => placeName(scenarioId, id));
+}
+
+/* Evidence regions arrive from scene.js as a bbox, a reference and the numbers
+ * behind them. The sentence describing one is written here. */
+function describeEvidence(scenarioId, ev) {
+  const m = ev.metrics || {};
+  const of = (id) => placeName(scenarioId, id);
+  switch (ev.kind) {
+    case 'extent':
+      return {
+        label: 'Peak inundation window',
+        note: `${m.km2} km² of new water inside a ${m.window_km} km window`,
+      };
+    case 'settlement':
+      return {
+        label: of(ev.ref) + ' built-up area',
+        note: `${m.inundated_pct}% of mapped built-up cells under water`,
+      };
+    case 'breach':
+      return {
+        label: of(ev.ref) + ' — first breach',
+        note: `${m.submerged_km} km of ${m.length_km} km submerged`,
+      };
+    case 'damage_extent':
+      return {
+        label: 'Peak damage concentration',
+        note: `${m.km2} km² classed severe within the window`,
+      };
+    case 'block':
+      return {
+        label: 'Worst-affected block ' + ev.ref,
+        note: `mean severity ${m.severity} across the block footprint`,
+      };
+    case 'alignment':
+      return {
+        label: 'New alignment corridor',
+        note: `${m.km} km of new graded surface`,
+      };
+    case 'site':
+      return {
+        label: of(ev.ref),
+        note: `${m.area_ha} ha of cleared hardstanding`,
+      };
+    default:
+      return { label: ev.id, note: '' };
+  }
+}
+
+/** Attach display strings to the measured evidence regions. */
+function dressEvidence(scenarioId, list) {
+  return (list || []).map((ev) => ({ ...ev, ...describeEvidence(scenarioId, ev) }));
+}
+
+/* ---- tile index ----------------------------------------------------------
+ * The retrievable corpus. `terms` is the searchable descriptor for each tile —
+ * in the real system this is replaced by a CLIP image embedding; here it is the
+ * text the lexical vectoriser indexes. Tile IDs follow the format pinned in
+ * CONTRACT.md: <STATE>-<NNN> · <YYYY>-Q<N> · <sensor>
+ */
+
+function tileId(sc, date, sensor) {
+  return sc.state_code + '-' + sc.tile_no + ' · ' + quarterOf(date) + ' · ' + sensor;
+}
+
+/* Descriptors are written in canonical terms, and a term repeated is a term
+ * weighted — the vectoriser uses sublinear term frequency, so listing `flood`
+ * three times makes this the tile a flood question should land on rather than
+ * merely a tile that mentions flooding. Without that, the shortest descriptor
+ * wins every query, because cosine normalises by document length. */
+const TILE_INDEX = [
+  {
+    key: 'flood-s1-after',
+    scenario: 'flood', date: 'after', sensor: 'Sentinel-1', layer: 'sar',
+    acquired: isoDate(DATE_AFTER),
+    terms: `flood flood flood water water extent extent access access road road
+            village village sar sar relief crop mask delta river`,
+  },
+  {
+    key: 'flood-s2-after',
+    scenario: 'flood', date: 'after', sensor: 'Sentinel-2', layer: 'optical',
+    acquired: isoDate(DATE_AFTER),
+    terms: `optical optical optical cloud cloud cloud explain explain sensor monsoon`,
+  },
+  {
+    key: 'flood-s2-before',
+    scenario: 'flood', date: 'before', sensor: 'Sentinel-2', layer: 'optical',
+    acquired: isoDate(DATE_BEFORE),
+    terms: `baseline baseline baseline optical crop crop village river water terrain road`,
+  },
+  {
+    key: 'quake-s2-after',
+    scenario: 'quake', date: 'after', sensor: 'Sentinel-2', layer: 'optical',
+    acquired: isoDate(DATE_AFTER),
+    terms: `damage damage damage quake quake quake optical village road access
+            extent change`,
+  },
+  {
+    key: 'quake-s1-after',
+    scenario: 'quake', date: 'after', sensor: 'Sentinel-1', layer: 'sar',
+    acquired: isoDate(DATE_AFTER),
+    terms: `sar sar sar damage damage quake change extent`,
+  },
+  {
+    key: 'infra-s2-after',
+    scenario: 'infra', date: 'after', sensor: 'Sentinel-2', layer: 'optical',
+    acquired: isoDate(DATE_AFTER),
+    terms: `change change change alignment alignment vegetation vegetation terrain
+            border optical road extent`,
+  },
+  {
+    key: 'infra-s2-before',
+    scenario: 'infra', date: 'before', sensor: 'Sentinel-2', layer: 'optical',
+    acquired: isoDate(DATE_BEFORE),
+    terms: `baseline baseline baseline terrain terrain vegetation border optical alignment`,
+  },
+];
+
+/* ---- lexical vector space ------------------------------------------------
+ * A small TF-IDF model over the tile descriptors. This stands in for the CLIP
+ * embedding space and exists so that the confidence number is an actual
+ * similarity rather than a constant.
+ *
+ * Descriptors above are short and written in canonical terms, and the tokeniser
+ * below folds an analyst's vocabulary onto those canonical terms. That is a
+ * plain thesaurus, and it does the job an embedding model would otherwise do:
+ * recognising that "underwater", "submerged" and "inundated" are one concept.
+ * Keeping documents short also keeps a good match scoring high — a cosine over
+ * a sixty-term descriptor is diluted to the point where nothing clears a
+ * sensible threshold. */
+
+const STOPWORDS = new Set(`a an the is are was were be been being of in on at to for from by with
+  and or but if then than that this these those it its as into over about
+  do does did doing have has had can could should would will shall may might must
+  i we you he she they them us me my our your their there here what which who whom
+  whose when where any some all no not now still right just show me tell
+  give get find please currently today good bad thing things also
+  image imagery images picture photo tile tiles scene scenes data area areas
+  region place look looking see seeing need want know say says like
+  how use used using pass passes acquisition currently please give`.split(/\s+/).filter(Boolean));
+
+/* Analyst vocabulary folded onto the canonical terms used in the descriptors.
+ * Keys are matched before stemming and again after, so both "inundated" and
+ * "inundation" land on `flood`. */
+const SYNONYMS = {
+  // water and flooding
+  underwater: 'flood', submerged: 'flood', submerg: 'flood', inundated: 'flood',
+  inundation: 'flood', inundat: 'flood', flooded: 'flood', flooding: 'flood',
+  deluge: 'flood', waterlogged: 'flood', spate: 'flood', overflow: 'flood',
+  swamped: 'flood', drowned: 'flood', standing: 'water', wet: 'water',
+  waterbody: 'water', ndwi: 'water', submersion: 'flood',
+  // extent
+  coverage: 'extent', spread: 'extent', much: 'extent', many: 'extent',
+  hectare: 'extent', hectares: 'extent', km2: 'extent', size: 'extent',
+  worst: 'extent', concentrated: 'extent', concentration: 'extent', hotspot: 'extent',
+  total: 'extent', proportion: 'extent', percentage: 'extent', percent: 'extent',
+  // roads and access
+  highway: 'road', route: 'road', routes: 'road', street: 'road', link: 'road',
+  links: 'road', carriageway: 'road', lane: 'road', bridge: 'road',
+  causeway: 'road', crossing: 'road', track: 'alignment',
+  passable: 'access', impassable: 'access', reachable: 'access', unreachable: 'access',
+  blocked: 'access', closed: 'access', open: 'access', reach: 'access',
+  connectivity: 'access', cutoff: 'access', isolated: 'access', stranded: 'access',
+  marooned: 'access', severed: 'access', drive: 'access', driveable: 'access',
+  trafficable: 'access', accessible: 'access', cut: 'access', off: 'access',
+  // settlements and response
+  settlement: 'village', settlements: 'village', habitation: 'village',
+  town: 'village', hamlet: 'village', villages: 'village', people: 'village',
+  population: 'village', community: 'village', residents: 'village',
+  rescue: 'relief', evacuation: 'relief', evacuate: 'relief', logistics: 'relief',
+  staging: 'relief', supply: 'relief', convoy: 'relief', aid: 'relief',
+  responder: 'relief', response: 'relief',
+  // sensors
+  radar: 'sar', sentinel1: 'sar', backscatter: 'sar', microwave: 'sar',
+  sentinel2: 'optical', visible: 'optical', truecolour: 'optical',
+  truecolor: 'optical', multispectral: 'optical', colour: 'optical', color: 'optical',
+  sentinel: 'sar', instrument: 'sensor', band: 'sensor', bands: 'sensor',
+  // cloud and weather
+  cloudy: 'cloud', overcast: 'cloud', obscured: 'cloud', blind: 'cloud',
+  unusable: 'cloud', storm: 'cloud', rain: 'cloud', weather: 'cloud',
+  atmospheric: 'cloud', haze: 'cloud', monsoonal: 'monsoon',
+  // reasoning
+  why: 'explain', reason: 'explain', because: 'explain', instead: 'explain',
+  trust: 'explain', confidence: 'explain', reliable: 'explain', certain: 'explain',
+  confident: 'explain', accurate: 'explain', sure: 'explain', verify: 'explain',
+  provenance: 'explain', evidence: 'explain', computed: 'explain',
+  // damage
+  damaged: 'damage', destroyed: 'damage', destruction: 'damage', collapse: 'damage',
+  collapsed: 'damage', rubble: 'damage', debris: 'damage', structural: 'damage',
+  ruined: 'damage', severe: 'damage', severity: 'damage', building: 'damage',
+  buildings: 'damage', block: 'damage', blocks: 'damage', builtup: 'damage',
+  earthquake: 'quake', seismic: 'quake', tremor: 'quake', aftershock: 'quake',
+  rupture: 'quake', fault: 'quake', epicentre: 'quake', epicenter: 'quake',
+  shaking: 'quake',
+  // change detection
+  changed: 'change', changes: 'change', new: 'change', construction: 'change',
+  constructed: 'change', built: 'change', appeared: 'change', different: 'change',
+  development: 'change', activity: 'change', since: 'change', recent: 'change',
+  graded: 'alignment', hardstanding: 'alignment', platform: 'alignment',
+  corridor: 'alignment', earthworks: 'alignment', path: 'alignment',
+  // land cover
+  cropland: 'crop', farm: 'crop', farmland: 'crop', agriculture: 'crop',
+  agricultural: 'crop', paddy: 'crop', field: 'crop', fields: 'crop',
+  harvest: 'crop', forest: 'vegetation', tree: 'vegetation', trees: 'vegetation',
+  green: 'vegetation', clearing: 'vegetation', cleared: 'vegetation',
+  deforestation: 'vegetation', canopy: 'vegetation',
+  ridge: 'terrain', valley: 'terrain', slope: 'terrain', elevation: 'terrain',
+  topography: 'terrain', ground: 'terrain', land: 'terrain',
+  frontier: 'border', sector: 'border',
+  // temporal
+  before: 'baseline', previous: 'baseline', prior: 'baseline', earlier: 'baseline',
+  reference: 'baseline', historical: 'baseline', past: 'baseline', last: 'baseline',
+  compare: 'baseline', comparison: 'baseline',
+};
+
+/* Place names inside each AOI are part of the searchable vocabulary — an
+ * analyst asking "can we still get to Mankombu" is asking about access to a
+ * village, and the index should know that. Derived from the gazetteer above, so
+ * the names the map labels and the names the index matches cannot drift. */
+for (const [scenarioId, table] of Object.entries(PLACES)) {
+  for (const [id, name] of Object.entries(table)) {
+    const canonical = id === 'HUB' ? 'relief'
+      : /^S\d+$/.test(id) ? 'village'
+        : /^[RAENVH]\d+$/.test(id) ? 'road'
+          : /^P\d+$/.test(id) ? 'alignment' : null;
+    if (!canonical) continue;
+    // Index the whole name and each distinctive word in it, so both "Mankombu"
+    // and "Mankombu bund road" resolve.
+    for (const w of [name.toLowerCase(), ...name.toLowerCase().split(/[\s-]+/)]) {
+      if (w.length > 3 && !SYNONYMS[w]) SYNONYMS[w] = canonical;
+    }
+  }
+}
+/* Things an analyst moves along a road. */
+Object.assign(SYNONYMS, {
+  truck: 'access', trucks: 'access', vehicle: 'access', vehicles: 'access',
+  lorry: 'access', ambulance: 'access', boat: 'access', boats: 'access',
+  traffic: 'access', transport: 'access',
+});
+
+/* Deliberately crude suffix stripping. It only has to make "floods" collide
+ * with "flood" for the words the thesaurus does not already cover. */
+function stem(t) {
+  if (t.length > 5 && t.endsWith('ing')) return t.slice(0, -3);
+  if (t.length > 5 && t.endsWith('ed')) return t.slice(0, -2);
+  if (t.length > 4 && t.endsWith('es')) return t.slice(0, -2);
+  if (t.length > 3 && t.endsWith('s') && !t.endsWith('ss')) return t.slice(0, -1);
+  return t;
+}
+
+function normalise(raw) {
+  if (SYNONYMS[raw]) return SYNONYMS[raw];
+  const s = stem(raw);
+  return SYNONYMS[s] || s;
+}
+
+function tokenize(text) {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .split(/[\s-]+/)
+    .filter((t) => t.length > 1 && !STOPWORDS.has(t))
+    .map(normalise)
+    .filter((t) => !STOPWORDS.has(t));
+}
+
+const N_DOCS = TILE_INDEX.length;
+const DF = new Map();
+for (const tile of TILE_INDEX) {
+  tile.tokens = tokenize(tile.terms);
+  for (const t of new Set(tile.tokens)) DF.set(t, (DF.get(t) || 0) + 1);
+}
+const MAX_IDF = Math.log((N_DOCS + 1) / 1) + 1;
+function idf(term) {
+  const df = DF.get(term);
+  return df ? Math.log((N_DOCS + 1) / (df + 1)) + 1 : MAX_IDF;
+}
+
+/* A sparse, L2-normalised TF-IDF vector. Out-of-vocabulary query terms are kept
+ * and given maximum idf: they match nothing, but they do count towards the
+ * norm, so an off-topic question genuinely scores lower instead of being
+ * silently discarded to flatter the result. */
+function vectorize(tokens) {
+  const tf = new Map();
+  for (const t of tokens) tf.set(t, (tf.get(t) || 0) + 1);
+  const vec = new Map();
+  let norm = 0;
+  for (const [t, f] of tf) {
+    const w = (1 + Math.log(f)) * idf(t);
+    vec.set(t, w);
+    norm += w * w;
+  }
+  norm = Math.sqrt(norm) || 1;
+  for (const [t, w] of vec) vec.set(t, w / norm);
+  return vec;
+}
+
+function cosine(a, b) {
+  // Iterate the smaller map; the vectors are already unit length.
+  const [small, large] = a.size <= b.size ? [a, b] : [b, a];
+  let dot = 0;
+  for (const [t, w] of small) {
+    const o = large.get(t);
+    if (o) dot += w * o;
+  }
+  return dot;
+}
+
+for (const tile of TILE_INDEX) tile.vec = vectorize(tile.tokens);
+
+/* ---- intent classification ----------------------------------------------- */
+
+/* Intent descriptors are written directly in canonical terms — they are matched
+ * against the same normalised query vector, so writing them in raw English
+ * would just fold them onto these terms anyway, less legibly. Repetition is
+ * weighting: a term listed twice carries more of that intent. */
+const INTENTS = [
+  { id: 'flood_extent', terms: 'flood flood flood extent extent water water crop terrain' },
+  { id: 'road_access', terms: 'access access access road road road relief alignment' },
+  { id: 'settlement_status', terms: 'village village village access access relief relief' },
+  { id: 'sensor_rationale', terms: 'explain explain explain optical optical cloud cloud sar sensor' },
+  { id: 'damage_assessment', terms: 'damage damage damage quake quake extent' },
+  { id: 'change_detection', terms: 'change change change alignment vegetation baseline' },
+];
+for (const it of INTENTS) it.vec = vectorize(tokenize(it.terms));
+
+function classifyIntent(qvec, scenarioId) {
+  const scored = INTENTS
+    .map((it) => ({ id: it.id, score: cosine(qvec, it.vec) }))
+    .sort((a, b) => b.score - a.score);
+  const top = scored[0];
+  if (!top || top.score < 0.05) {
+    // Nothing matched; fall back to the scenario default question.
+    return {
+      id: scenarioId === 'quake' ? 'damage_assessment'
+        : scenarioId === 'infra' ? 'change_detection' : 'flood_extent',
+      score: top ? top.score : 0,
+      weak: true,
+    };
+  }
+  return { id: top.id, score: top.score, weak: false, runners: scored.slice(1, 3) };
+}
+
+/* ---- retrieval ------------------------------------------------------------ */
+
+/* Hybrid search, in the shape spec/decisions.md D-009 settled on: a metadata
+ * pre-filter narrows the candidate set, then vector similarity ranks within it.
+ * The AOI on screen is the pre-filter — an analyst working a flood in one
+ * district is not asking about a town two states away, and letting a shorter
+ * descriptor from another AOI win on cosine alone is exactly the failure this
+ * pattern exists to prevent.
+ *
+ * The similarity returned is the raw cosine against the selected tile. The
+ * pre-filter changes which tiles are eligible; it never adjusts the number. */
+function retrieve(queryText, scenarioId) {
+  const qvec = vectorize(tokenize(queryText));
+  const candidates = TILE_INDEX.filter((t) => t.scenario === scenarioId);
+  const ranked = candidates
+    .map((tile) => ({ tile, similarity: cosine(qvec, tile.vec) }))
+    .sort((a, b) => b.similarity - a.similarity);
+  return {
+    qvec,
+    ranked,
+    prefiltered: candidates.length,
+    indexed: TILE_INDEX.length,
+  };
+}
+
+/* ---- answer composition --------------------------------------------------
+ * Sentence frames are scripted. Every value dropped into them is measured.
+ * `provenance` records how each one was obtained so the UI can show it. */
+
+function pct(v) { return v + '%'; }
+
+function composeFlood(intent, m, sc) {
+  const cutOff = m.reachability.filter((r) => !r.reachable);
+  const reach = m.reachability.filter((r) => r.reachable);
+  const top = m.restoration_priority && m.restoration_priority[0];
+  const nameOf = (id) => placeName('flood', id);
+  const push = (field, value, method) => ({ field, value, method });
+
+  if (intent === 'sensor_rationale') {
+    return {
+      answer:
+        `The optical pass for ${prettyDate(isoDate(DATE_AFTER))} is ${pct(m.cloud_after_pct)} cloud, so it cannot see the ground — `
+        + `the pre-monsoon optical baseline was ${pct(m.cloud_before_pct)} cloud by comparison. `
+        + `Radar is not blocked by cloud, and open water is unusually easy to identify in it: a flat water surface reflects the pulse away from the sensor, `
+        + `so flooded ground appears as very low backscatter. The water extent quoted here is thresholded from Sentinel-1 VV, not from an optical index. `
+        + `Switch the layer to SAR to see the same area through the storm.`,
+      provenance: [
+        push('cloud_after_pct', m.cloud_after_pct, 'fraction of AOI cells flagged cloud in the event-date cloud mask'),
+        push('cloud_before_pct', m.cloud_before_pct, 'same measurement over the baseline pass'),
+      ],
+      map: { layer: 'sar', date: 'after', compare: false, evidence: null },
+      headline: 'Optical unusable — routed to SAR',
+    };
+  }
+
+  if (intent === 'road_access') {
+    const worst = m.worst_road;
+    return {
+      answer:
+        `Of ${m.roads_total} mapped links in the AOI, ${m.roads_impassable} are impassable and ${m.roads_restricted} restricted; ${m.roads_open} are clear. `
+        + `The worst is ${nameOf(worst.id)}, with ${worst.submerged_km} km of its ${worst.length_km} km submerged (${pct(worst.submerged_pct)}). `
+        + (top
+          ? `Restoring ${nameOf(top.road_id)} would reconnect ${top.settlements_reconnected} settlement${top.settlements_reconnected === 1 ? '' : 's'} `
+            + `(${names('flood', top.settlement_ids).join(', ')}) and has ${top.submerged_km} km under water — the shortest bridging task of the options that reconnect anything.`
+          : `No single link restoration reconnects an additional settlement.`),
+      provenance: [
+        push('roads_impassable', m.roads_impassable, 'centreline sampled at ~33 m; link classed impassable above 8% of samples inside the SAR water mask'),
+        push('worst_road.submerged_km', worst.submerged_km, 'submerged sample fraction × polyline length'),
+        top ? push('restoration_priority[0]', nameOf(top.road_id), 'BFS from the relief staging point re-run once per cut link, counting settlements regained') : null,
+      ].filter(Boolean),
+      map: { layer: 'sar', date: 'after', compare: false, evidence: 'E3' },
+      headline: `${m.roads_impassable} of ${m.roads_total} links impassable`,
+    };
+  }
+
+  if (intent === 'settlement_status') {
+    const worst = m.worst_settlement;
+    return {
+      answer:
+        `${cutOff.length} of ${m.reachability.length} settlements have no passable road route to the relief staging point: ${names('flood', cutOff.map((c) => c.id)).join(', ')}. `
+        + `${reach.length === 1 ? nameOf(reach[0].id) + ' is' : names('flood', reach.map((r) => r.id)).join(', ') + ' are'} still reachable. `
+        + (worst && worst.inundated_pct > 0
+          ? `${nameOf(worst.id)} is also directly inundated — ${pct(worst.inundated_pct)} of its mapped built-up cells are under water. `
+          : `No settlement footprint is itself substantially inundated; the problem is access rather than immersion. `)
+        + `Isolation here is a routing result, not an observation: it is what the road graph gives once the cut links are removed.`,
+      provenance: [
+        push('cut_off_count', cutOff.length, 'breadth-first search from the relief staging point over links classed passable'),
+        worst ? push(nameOf(worst.id) + '.inundated_pct', worst.inundated_pct, 'built-up cells inside the settlement footprint intersected with the water mask') : null,
+      ].filter(Boolean),
+      map: { layer: 'sar', date: 'after', compare: false, evidence: 'E2' },
+      headline: `${cutOff.length} settlements without road access`,
+    };
+  }
+
+  // flood_extent, and the default
+  return {
+    answer:
+      `Water now covers ${m.water_after_km2} km² of the ${m.aoi_km2} km² AOI, against ${m.water_before_km2} km² at the pre-monsoon baseline — `
+      + `${m.new_water_km2} km² of newly flooded ground, or ${pct(m.new_water_pct_of_aoi)} of the AOI. `
+      + `${m.cropland_inundated_ha} ha of mapped cropland is under water (${pct(m.cropland_inundated_pct)} of cropland in the AOI). `
+      + `The extent is derived from the Sentinel-1 pass, because the optical pass for the same date is ${pct(m.cloud_after_pct)} cloud. `
+      + `Drag the compare slider to see the same frame before and during the event.`,
+    provenance: [
+      push('water_after_km2', m.water_after_km2, 'cells in the SAR water mask × (33.3 m)²'),
+      push('new_water_km2', m.new_water_km2, 'event water mask minus baseline water mask, same cell area'),
+      push('cropland_inundated_ha', m.cropland_inundated_ha, 'cells classed cropland intersected with the event water mask'),
+      push('cloud_after_pct', m.cloud_after_pct, 'fraction of AOI cells flagged cloud in the event-date cloud mask'),
+    ],
+    map: { layer: 'sar', date: 'after', compare: true, evidence: 'E1' },
+    headline: `${m.new_water_km2} km² newly inundated`,
+  };
+}
+
+function composeQuake(intent, m) {
+  if (intent === 'road_access') {
+    return {
+      answer:
+        `${pct(m.arterial_affected_pct)} of the ${placeName('quake', m.arterial_id)} centreline runs through a corridor with severe structural damage on at least one side, `
+        + `so it should be treated as obstructed rather than closed — debris, not collapse of the carriageway itself. `
+        + `Damage severity is measured over buildings; the road is inferred from what is standing beside it.`,
+      provenance: [
+        { field: 'arterial_affected_pct', value: m.arterial_affected_pct, method: 'centreline sampled at ~33 m, taking peak damage severity in a ±4-cell corridor' },
+      ],
+      map: { layer: 'optical', date: 'after', compare: true, evidence: 'E1' },
+      headline: 'Arterial obstructed, not severed',
+    };
+  }
+  return {
+    answer:
+      `${m.severe_damage_km2} km² of the ${m.builtup_km2} km² built-up footprint classes as severely damaged — ${pct(m.severe_damage_pct_of_builtup)} of built-up area. `
+      + `That is ${m.blocks_severe} of ${m.blocks_total} mapped blocks above the severity threshold. `
+      + `Damage is concentrated along the rupture trace rather than spread evenly; the worst block scores ${m.worst_blocks[0].severity} on the 0–1 severity index. `
+      + `Optical is usable here — the post-event pass is only ${pct(m.cloud_after_pct)} cloud — so this is a true-colour assessment, not a radar one.`,
+    provenance: [
+      { field: 'severe_damage_km2', value: m.severe_damage_km2, method: 'built-up cells above severity 0.55 × (33.3 m)²' },
+      { field: 'blocks_severe', value: m.blocks_severe, method: 'per-block mean severity over the block footprint, threshold 0.42' },
+      { field: 'cloud_after_pct', value: m.cloud_after_pct, method: 'fraction of AOI cells flagged cloud in the post-event cloud mask' },
+    ],
+    map: { layer: 'optical', date: 'after', compare: true, evidence: 'E1' },
+    headline: `${pct(m.severe_damage_pct_of_builtup)} of built-up area severely damaged`,
+  };
+}
+
+function composeInfra(intent, m) {
+  const sites = m.new_sites.map((s) => `${placeName('infra', s.id)} (${s.area_ha} ha)`).join(' and ');
+  return {
+    answer:
+      `${m.new_surface_ha} ha of new surface appears between the two passes, none of it present in the baseline. `
+      + `That resolves into ${m.new_alignment_km} km of new graded alignment plus two cleared areas — ${sites}. `
+      + `${m.vegetation_cleared_ha} ha of the new surface was vegetated in the baseline pass. `
+      + `This is change detection over terrain, at the level of what is on the ground and how much of it — extent and activity, not intent.`,
+    provenance: [
+      { field: 'new_surface_ha', value: m.new_surface_ha, method: 'cells whose land-cover class differs between passes × (33.3 m)² ' },
+      { field: 'new_alignment_km', value: m.new_alignment_km, method: 'polyline length of the new alignment × 33.3 m per cell' },
+      { field: 'vegetation_cleared_ha', value: m.vegetation_cleared_ha, method: 'changed cells whose baseline class was vegetation' },
+    ],
+    map: { layer: 'optical', date: 'after', compare: true, evidence: 'E1' },
+    headline: `${m.new_surface_ha} ha of new surface`,
+  };
+}
+
+/* ---- trace ---------------------------------------------------------------
+ * The step wording is scripted; the values inside each step are the ones the
+ * request actually produced. The UI labels this panel as a simulated pipeline
+ * trace, because in this build there is no pipeline behind it. */
+
+function buildTrace(ctx) {
+  const { queryText, intent, scenario, measures, best, confidence, evidenceCount, routedToSar } = ctx;
+
+  const steps = [
+    {
+      n: '01',
+      title: 'Interpreting query',
+      detail: `intent: ${intent.id} · AOI: ${scenario.aoi.split(' · ')[0]} · window: last 7 days`,
+      sub: `${tokenize(queryText).length} content tokens after stopword removal`,
+      ms: 210,
+      status: 'ok',
+    },
+    {
+      n: '02',
+      title: 'Validating data',
+      detail: routedToSar
+        ? `optical ${measures.cloud_after_pct}% cloud → unusable · routing to SAR`
+        : `optical ${measures.cloud_after_pct}% cloud → within tolerance · optical retained`,
+      sub: routedToSar
+        ? `cloud mask exceeds the 25% usability threshold for an optical index`
+        : `cloud mask below the 25% usability threshold`,
+      ms: 340,
+      status: routedToSar ? 'reroute' : 'ok',
+    },
+    {
+      n: '03',
+      title: 'Selecting model',
+      detail: routedToSar
+        ? 'Sentinel-1 VV water-extent segmentation'
+        : 'Sentinel-2 true-colour change segmentation',
+      sub: routedToSar
+        ? 'low-backscatter threshold, the operational rule for SAR flood mapping'
+        : 'per-cell class comparison between passes',
+      ms: 260,
+      status: 'ok',
+    },
+    {
+      n: '04',
+      title: 'Executing',
+      detail: `pre-filter ${scenario.aoi.split(' · ')[0]} → ${ctx.prefiltered} of ${ctx.indexed} tiles · ${best.tile.sensor} ${best.tile.acquired} selected`,
+      sub: `${GRID}×${GRID} cells at ${GSD_M} m · ${AOI_KM.toFixed(1)} km across`,
+      ms: 620,
+      status: 'ok',
+    },
+    {
+      n: '05',
+      title: 'Synthesising',
+      detail: `confidence ${confidence.toFixed(4)} · ${evidenceCount} evidence region${evidenceCount === 1 ? '' : 's'} cited`,
+      sub: `cosine similarity between query vector and retrieved tile vector`,
+      ms: 300,
+      status: confidence < CONFIDENCE_FLOOR ? 'warn' : 'ok',
+    },
+  ];
+  return steps;
+}
+
+/* ---- the API -------------------------------------------------------------- */
+
+function confidenceBand(c) {
+  if (c >= 0.45) return { label: 'High', tone: 'high' };
+  if (c >= 0.28) return { label: 'Moderate', tone: 'moderate' };
+  if (c >= CONFIDENCE_FLOOR) return { label: 'Low', tone: 'low' };
+  return { label: 'Below threshold', tone: 'floor' };
+}
+
+/**
+ * The demo's stand-in for POST /query.
+ *
+ * @param {string} text  the analyst's plain-language question
+ * @param {object} ctx   { scenario } — which AOI is on screen
+ * @returns {Promise<object>} CONTRACT.md response shape plus demo-only extras
+ */
+async function query(text, ctx = {}) {
+  const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const scenarioId = ctx.scenario || 'flood';
+  const scenario = getScenario(scenarioId);
+
+  const { qvec, ranked, prefiltered, indexed } = retrieve(text, scenarioId);
+  const best = ranked[0];
+  const confidence = best.similarity;         // the real cosine similarity, unmodified
+  const intent = classifyIntent(qvec, scenarioId);
+  const measures = analyzeScene(scenarioId);
+
+  const routedToSar = scenarioId === 'flood' && measures.cloud_after_pct > 25;
+
+  let composed;
+  if (confidence < CONFIDENCE_FLOOR) {
+    composed = {
+      answer:
+        `I do not have evidence in this AOI that supports an answer to that. The closest tile in the index scored `
+        + `${confidence.toFixed(2)} cosine similarity against the question, below the ${CONFIDENCE_FLOOR} floor this build will answer above. `
+        + `The index currently holds ${TILE_INDEX.length} tiles across ${SCENARIOS.length} AOIs — try a question about water extent, road access or damage in this AOI, `
+        + `or switch scenario in the header.`,
+      provenance: [
+        { field: 'confidence', value: +confidence.toFixed(4), method: 'cosine similarity, query TF-IDF vector against best tile vector' },
+      ],
+      map: null,
+      headline: 'No supporting evidence',
+    };
+  } else if (scenarioId === 'quake') {
+    composed = composeQuake(intent.id, measures);
+  } else if (scenarioId === 'infra') {
+    composed = composeInfra(intent.id, measures);
+  } else {
+    composed = composeFlood(intent.id, measures, scenario);
+  }
+
+  // Resolve the cited evidence region, if the answer names one.
+  const evidence = dressEvidence(scenarioId, measures.evidence);
+  const cited = composed.map && composed.map.evidence
+    ? evidence.filter((e) => e.id === composed.map.evidence)
+    : [];
+  const focus = cited[0] || null;
+
+  const mapDirective = composed.map
+    ? {
+      layer: composed.map.layer,
+      date: composed.map.date,
+      compare: !!composed.map.compare,
+      evidence_id: composed.map.evidence,
+      bbox: focus ? focus.bbox : null,
+    }
+    : null;
+
+  const thumbLayer = mapDirective ? mapDirective.layer : 'optical';
+  const thumbDate = mapDirective ? mapDirective.date : 'after';
+
+  const trace = buildTrace({
+    queryText: text, intent, scenario, measures, best, confidence,
+    evidenceCount: cited.length, routedToSar, prefiltered, indexed,
+  });
+
+  const elapsed = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0;
+
+  return {
+    /* --- the shape pinned in CONTRACT.md --- */
+    tile_id: tileId(scenario, best.tile.date === 'after' ? DATE_AFTER : DATE_BEFORE, best.tile.sensor),
+    confidence,                                   // float 0–1, real cosine similarity
+    answer: composed.answer,
+    image_url: renderThumb(scenarioId, thumbLayer, thumbDate, focus ? focus.bbox : null),
+
+    /* --- additive, demo-only; see demo/README.md --- */
+    query: text,
+    scenario: scenarioId,
+    intent: intent.id,
+    intent_confidence: +intent.score.toFixed(4),
+    headline: composed.headline,
+    confidence_band: confidenceBand(confidence),
+    answerable: confidence >= CONFIDENCE_FLOOR,
+    sensor: best.tile.sensor,
+    acquired: best.tile.acquired,
+    acquired_pretty: prettyDate(best.tile.acquired),
+    water_method: waterMethod(scenarioId, thumbDate),
+    trace,
+    evidence: cited.length ? cited : evidence.slice(0, 1),
+    all_evidence: evidence,
+    provenance: composed.provenance,
+    map_directive: mapDirective,
+    measurements: measures,
+    prefiltered_tiles: prefiltered,
+    indexed_tiles: indexed,
+    ranked: ranked.slice(0, 4).map((r) => ({
+      tile_id: tileId(getScenario(r.tile.scenario), r.tile.date === 'after' ? DATE_AFTER : DATE_BEFORE, r.tile.sensor),
+      scenario: r.tile.scenario,
+      sensor: r.tile.sensor,
+      similarity: +r.similarity.toFixed(4),
+    })),
+    latency_ms: elapsed < 1 ? +elapsed.toFixed(2) : Math.round(elapsed),
+    contract_version: CONTRACT_VERSION,
+    is_mock: true,
+  };
+}
+
+/**
+ * Streaming wrapper. A real backend would emit these over SSE as the pipeline
+ * progresses; here the result is computed up front and the trace is played back
+ * against the timings each step reported, so the sequencing the analyst sees
+ * matches the sequencing the response describes.
+ *
+ * onEvent receives:
+ *   { type: 'trace', step }        one pipeline step completed
+ *   { type: 'answer', response }   the full response object
+ */
+async function queryStream(text, ctx = {}, onEvent = () => {}, opts = {}) {
+  const speed = opts.speed || 1;
+  const response = await query(text, ctx);
+
+  for (const step of response.trace) {
+    await new Promise((r) => setTimeout(r, Math.max(60, step.ms / speed)));
+    onEvent({ type: 'trace', step });
+  }
+  onEvent({ type: 'answer', response });
+  return response;
+}
+
+async function listScenarios() {
+  return SCENARIOS;
+}
+
+function suggestions(scenarioId) {
+  return getScenario(scenarioId).starters;
+}
+
+/** Index size, for the honest "what is actually in here" readout in the UI. */
+function indexStats() {
+  return {
+    tiles: TILE_INDEX.length,
+    scenarios: SCENARIOS.length,
+    vocabulary: DF.size,
+    space: 'lexical TF-IDF (stands in for CLIP image/text embeddings)',
+  };
+}
+  return { IS_MOCK: IS_MOCK, CONTRACT_VERSION: CONTRACT_VERSION, CONFIDENCE_FLOOR: CONFIDENCE_FLOOR, SCENARIOS: SCENARIOS, getScenario: getScenario, LAYERS: LAYERS, waterMethod: waterMethod, PLACES: PLACES, placeName: placeName, query: query, queryStream: queryStream, listScenarios: listScenarios, suggestions: suggestions, indexStats: indexStats };
+})();
+
+/* ===== src/ui/trace.js ===== */
+__m["src/ui/trace.js"] = (function () {
+
+/* ---------------------------------------------------------------------------
+ * ui/trace.js — the agent trace block
+ *
+ * Renders the pipeline steps inside an assistant turn, one at a time, as the
+ * answer is produced. The steps are labelled as a simulated trace because in
+ * this build there is no pipeline behind them — but the values inside each
+ * step are the ones the request actually produced, including the cloud figure
+ * that drives the reroute and the confidence that ends it.
+ * ------------------------------------------------------------------------- */
+
+const STATUS_NOTE = {
+  reroute: 'Sensor reroute — the pass this question would normally use cannot see the ground.',
+  warn: 'Below the answer threshold — the response says so rather than guessing.',
+};
+
+function createTrace(host, { open = true } = {}) {
+  const root = document.createElement('div');
+  root.className = 'trace';
+  root.dataset.open = String(open);
+
+  const head = document.createElement('button');
+  head.type = 'button';
+  head.className = 'trace-head';
+  head.setAttribute('aria-expanded', String(open));
+  head.innerHTML = `
+    <span class="live-dot" aria-hidden="true"></span>
+    <span>Agent trace</span>
+    <span class="summary" id="traceSummary"></span>
+    <span class="chev" aria-hidden="true">&#9660;</span>`;
+
+  const body = document.createElement('div');
+  body.className = 'trace-body';
+
+  const note = document.createElement('div');
+  note.className = 'trace-note';
+  note.textContent = 'Simulated pipeline trace · demo build';
+
+  head.addEventListener('click', () => {
+    const next = root.dataset.open !== 'true';
+    root.dataset.open = String(next);
+    head.setAttribute('aria-expanded', String(next));
+  });
+
+  root.append(head, body, note);
+  host.appendChild(root);
+
+  const summary = head.querySelector('#traceSummary');
+  summary.removeAttribute('id');
+  const dot = head.querySelector('.live-dot');
+  let count = 0;
+
+  return {
+    root,
+
+    addStep(step) {
+      count++;
+      const row = document.createElement('div');
+      row.className = 'trace-step';
+      row.dataset.status = step.status || 'ok';
+      row.innerHTML = `
+        <span class="trace-n">${escapeHtml(step.n)}</span>
+        <span>
+          <span class="trace-title"></span>
+          <div class="trace-detail"></div>
+          <div class="trace-sub"></div>
+        </span>`;
+      row.querySelector('.trace-title').textContent = step.title;
+      row.querySelector('.trace-detail').textContent = step.detail;
+      row.querySelector('.trace-sub').textContent = step.sub || '';
+      body.appendChild(row);
+      summary.textContent = step.title.toLowerCase() + '…';
+      if (STATUS_NOTE[step.status]) note.textContent = STATUS_NOTE[step.status];
+      return row;
+    },
+
+    /* Called once the answer has landed: stop the live indicator and leave a
+     * one-line summary so the block can be collapsed without losing the point. */
+    finish(response) {
+      dot.style.animation = 'none';
+      dot.style.background = response.answerable ? 'var(--ok)' : 'var(--alert)';
+      const rerouted = response.trace.some((s) => s.status === 'reroute');
+      summary.textContent = `${count} steps · ${response.latency_ms} ms compute`
+        + (rerouted ? ' · rerouted to SAR' : '');
+      if (!STATUS_NOTE.reroute || !rerouted) {
+        note.textContent = 'Simulated pipeline trace · demo build';
+      }
+    },
+
+    collapse() {
+      root.dataset.open = 'false';
+      head.setAttribute('aria-expanded', 'false');
+    },
+  };
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+  return { createTrace: createTrace };
+})();
+
+/* ===== src/ui/chat.js ===== */
+__m["src/ui/chat.js"] = (function () {
+  const { createTrace } = __m["src/ui/trace.js"];
+/* ---------------------------------------------------------------------------
+ * ui/chat.js — the conversation panel
+ *
+ * Owns the message list, the streaming reveal of an answer, the confidence
+ * readout, the evidence citation, and the provenance table that lets anyone
+ * check where each number in an answer came from without reading the source.
+ *
+ * It holds no scripted content of its own: everything it displays arrives on
+ * the response object from api/mock.js.
+ * ------------------------------------------------------------------------- */
+
+
+
+const TYPE_MS_PER_CHAR = 9;      // reveal speed; word-chunked, so this is a floor
+
+function createChat(opts) {
+  const list = document.getElementById('messages');
+
+  function scrollToEnd(smooth = true) {
+    list.scrollTo({ top: list.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+  }
+
+  /* ---- empty state ------------------------------------------------------- */
+
+  function showEmptyState(scenario, stats) {
+    list.innerHTML = '';
+    const el = document.createElement('div');
+    el.className = 'msg empty';
+    el.innerHTML = `
+      <h3></h3>
+      <p></p>
+      <p class="hint">
+        Pick a starter question below, or type your own.<br>
+        <kbd>C</kbd> compare &middot; <kbd>V</kbd> vectors &middot; <kbd>A</kbd> draw AOI &middot;
+        <kbd>1</kbd>&ndash;<kbd>3</kbd> layer &middot; <kbd>0</kbd> reset view
+      </p>`;
+    el.querySelector('h3').textContent = scenario.name + ' · ' + scenario.aoi;
+    el.querySelector('p').textContent = scenario.summary;
+    list.appendChild(el);
+  }
+
+  /* ---- user turn --------------------------------------------------------- */
+
+  function addUserMessage(text) {
+    const el = document.createElement('div');
+    el.className = 'msg msg-user';
+    el.textContent = text;
+    list.appendChild(el);
+    scrollToEnd();
+    return el;
+  }
+
+  /* ---- assistant turn ---------------------------------------------------- */
+
+  function beginAgentMessage() {
+    // Clear the empty state on the first real turn.
+    const empty = list.querySelector('.empty');
+    if (empty) empty.remove();
+
+    const el = document.createElement('div');
+    el.className = 'msg msg-agent';
+    list.appendChild(el);
+
+    const trace = createTrace(el, { open: true });
+    const wrap = document.createElement('div');
+    wrap.className = 'answer-wrap';
+    el.appendChild(wrap);
+    scrollToEnd();
+
+    let stopped = false;
+
+    return {
+      root: el,
+
+      onTraceStep(step) {
+        trace.addStep(step);
+        scrollToEnd();
+      },
+
+      async complete(response) {
+        trace.finish(response);
+
+        const headline = document.createElement('h3');
+        headline.className = 'answer-headline' + (response.answerable ? '' : ' alert');
+        headline.textContent = response.headline;
+        wrap.appendChild(headline);
+
+        const p = document.createElement('p');
+        p.className = 'answer-text';
+        wrap.appendChild(p);
+        scrollToEnd();
+
+        await typeInto(p, response.answer, () => stopped);
+
+        renderConfidence(wrap, response);
+        renderMeta(wrap, response);
+        if (response.answerable) renderEvidence(wrap, response);
+        renderActions(wrap, response);
+        renderProvenance(wrap, response);
+
+        // Collapse the trace once the answer is readable, leaving the summary.
+        setTimeout(() => trace.collapse(), 900);
+        scrollToEnd();
+      },
+
+      fail(err) {
+        trace.finish({ answerable: false, latency_ms: 0, trace: [] });
+        const card = document.createElement('div');
+        card.className = 'err-card';
+        card.innerHTML = `
+          <h4>That query could not be completed</h4>
+          <p>The scene analysis or the renderer raised an error. Nothing was lost — the map still holds the last good state.</p>
+          <code></code>
+          <button class="act" type="button">Retry</button>`;
+        card.querySelector('code').textContent = String(err && err.message ? err.message : err);
+        card.querySelector('button').addEventListener('click', () => {
+          if (opts.onRetry) opts.onRetry();
+        });
+        wrap.appendChild(card);
+        scrollToEnd();
+      },
+
+      stop() { stopped = true; },
+    };
+  }
+
+  /* ---- pieces ------------------------------------------------------------ */
+
+  function renderConfidence(wrap, r) {
+    const row = document.createElement('div');
+    row.className = 'confidence';
+    row.innerHTML = `
+      <span class="label">Confidence</span>
+      <span class="conf-track"><span class="conf-fill"></span></span>
+      <span class="conf-num"></span>
+      <span class="conf-band"></span>`;
+    const fill = row.querySelector('.conf-fill');
+    fill.dataset.tone = r.confidence_band.tone;
+    const num = row.querySelector('.conf-num');
+    // CONTRACT.md: two decimal places displayed, four in logs.
+    num.textContent = r.confidence.toFixed(2);
+    num.style.color = toneColor(r.confidence_band.tone);
+    row.querySelector('.conf-band').textContent = r.confidence_band.label;
+    wrap.appendChild(row);
+    requestAnimationFrame(() => {
+      fill.style.width = Math.max(2, Math.min(100, r.confidence * 100)) + '%';
+    });
+  }
+
+  function toneColor(tone) {
+    return {
+      high: 'var(--ok)', moderate: 'var(--cyan)',
+      low: 'var(--amber)', floor: 'var(--alert)',
+    }[tone] || 'var(--ink)';
+  }
+
+  function renderMeta(wrap, r) {
+    const meta = document.createElement('div');
+    meta.className = 'answer-meta';
+    const parts = [
+      ['TILE', r.tile_id],
+      ['ACQUIRED', r.acquired_pretty],
+      ['INTENT', r.intent],
+      ['SEARCH', `${r.prefiltered_tiles}/${r.indexed_tiles} tiles`],
+      ['LATENCY', r.latency_ms + ' ms'],
+    ];
+    meta.innerHTML = parts
+      .map(([k, v]) => `<span>${k} <span class="v">${escapeHtml(String(v))}</span></span>`)
+      .join('');
+    wrap.appendChild(meta);
+  }
+
+  function renderEvidence(wrap, r) {
+    const ev = r.evidence && r.evidence[0];
+    if (!ev) return;
+    const strip = document.createElement('div');
+    strip.className = 'evidence-strip';
+    strip.innerHTML = `
+      <img class="thumb" alt="Cited evidence tile crop">
+      <span class="body">
+        <span class="cap">Evidence &middot; ${escapeHtml(ev.id)}</span>
+        <div class="title"></div>
+        <div class="note"></div>
+      </span>`;
+    const img = strip.querySelector('.thumb');
+    img.src = r.image_url;
+    img.addEventListener('click', () => opts.onViewEvidence(r));
+    strip.querySelector('.title').textContent = ev.label;
+    strip.querySelector('.note').textContent = ev.note;
+    wrap.appendChild(strip);
+  }
+
+  function renderActions(wrap, r) {
+    const row = document.createElement('div');
+    row.className = 'answer-actions';
+
+    if (r.answerable && r.evidence && r.evidence.length) {
+      row.appendChild(button('View evidence on map', 'primary', '&#9678;', () => {
+        opts.onViewEvidence(r);
+      }));
+    }
+    if (r.map_directive && r.map_directive.compare) {
+      row.appendChild(button('Compare passes', '', '&#8646;', () => {
+        opts.onCompare(r);
+      }));
+    }
+    if (r.all_evidence && r.all_evidence.length > 1) {
+      row.appendChild(button(`All ${r.all_evidence.length} regions`, '', '&#9707;', () => {
+        opts.onViewAllEvidence(r);
+      }));
+    }
+
+    const provBtn = button('How this was computed', '', '&#402;', () => {
+      const table = wrap.querySelector('.provenance');
+      const showing = !table.hidden;
+      table.hidden = showing;
+      provBtn.textContent = '';
+      provBtn.append(glyph('&#402;'), document.createTextNode(
+        showing ? 'How this was computed' : 'Hide computation'
+      ));
+      if (!showing) scrollToEnd();
+    });
+    row.appendChild(provBtn);
+    wrap.appendChild(row);
+  }
+
+  function button(text, cls, glyphHtml, onClick) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'act' + (cls ? ' ' + cls : '');
+    b.append(glyph(glyphHtml), document.createTextNode(text));
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  function glyph(html) {
+    const s = document.createElement('span');
+    s.className = 'glyph';
+    s.setAttribute('aria-hidden', 'true');
+    s.innerHTML = html;
+    return s;
+  }
+
+  /* The provenance table is the honesty mechanism made checkable: every figure
+   * quoted in the answer, with the measurement that produced it. */
+  function renderProvenance(wrap, r) {
+    const box = document.createElement('div');
+    box.className = 'provenance';
+    box.hidden = true;
+    const rows = (r.provenance || []).map((p) => `
+      <tr>
+        <td class="f">${escapeHtml(p.field)}</td>
+        <td class="v">${escapeHtml(String(p.value))}</td>
+        <td>${escapeHtml(p.method)}</td>
+      </tr>`).join('');
+    box.innerHTML = `<table>
+      <thead><tr><th>Field</th><th>Value</th><th>How it was measured</th></tr></thead>
+      <tbody>${rows}</tbody></table>`;
+    wrap.appendChild(box);
+  }
+
+  /* ---- typing reveal ----------------------------------------------------- */
+
+  /* Reveals by word rather than by character: character-by-character at a
+   * readable speed is too slow to sit through, and word chunks still read as
+   * generation rather than as a paste. */
+  function typeInto(node, text, isStopped) {
+    return new Promise((resolve) => {
+      const words = text.split(/(\s+)/);
+      let i = 0;
+      const caret = document.createElement('span');
+      caret.className = 'caret';
+      node.appendChild(caret);
+
+      function step() {
+        if (isStopped && isStopped()) {
+          node.textContent = text;
+          return resolve();
+        }
+        let budget = 3;
+        while (budget-- > 0 && i < words.length) {
+          caret.before(document.createTextNode(words[i]));
+          i++;
+        }
+        if (i >= words.length) {
+          caret.remove();
+          return resolve();
+        }
+        const chunk = words.slice(Math.max(0, i - 3), i).join('');
+        setTimeout(step, Math.max(24, chunk.length * TYPE_MS_PER_CHAR));
+      }
+      setTimeout(step, 90);
+    });
+  }
+
+  return { showEmptyState, addUserMessage, beginAgentMessage, scrollToEnd };
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+  return { createChat: createChat };
+})();
+
+/* ===== src/ui/map.js ===== */
+__m["src/ui/map.js"] = (function () {
+  const { buildScene, analyzeScene, GRID, GSD_M } = __m["src/scene.js"];
+  const { renderLayer } = __m["src/render.js"];
+  const { placeName, LAYERS, waterMethod } = __m["src/api/mock.js"];
+/* ---------------------------------------------------------------------------
+ * ui/map.js — the imagery viewer
+ *
+ * Owns the viewport (zoom, pan, animated flights), the layer and date
+ * selection, the before/after swipe, and everything drawn on the vector
+ * overlay: the AOI, the road network coloured by measured status, settlement
+ * markers, and the evidence highlight an answer points at.
+ *
+ * The overlay is a separate canvas drawn in screen space and repainted every
+ * frame of a viewport change, which is what keeps the vectors locked to the
+ * imagery instead of sliding against it.
+ * ------------------------------------------------------------------------- */
+
+
+
+
+
+const MIN_ZOOM = 0.92;
+const MAX_ZOOM = 9;
+const FLIGHT_MS = 720;
+
+function easeInOut(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+function createMap(opts) {
+  const el = {
+    stage: document.getElementById('stage'),
+    after: document.getElementById('canvasAfter'),
+    before: document.getElementById('canvasBefore'),
+    layerBefore: document.getElementById('layerBefore'),
+    overlay: document.getElementById('overlay'),
+    handle: document.getElementById('compareHandle'),
+    tagL: document.getElementById('compareTagL'),
+    tagR: document.getElementById('compareTagR'),
+    legend: document.getElementById('legend'),
+    scaleBar: document.getElementById('scaleBar'),
+    scaleText: document.getElementById('scaleText'),
+    footer: document.getElementById('mapFooter'),
+  };
+  const octx = el.overlay.getContext('2d');
+
+  const state = {
+    scenario: 'flood',
+    layer: 'sar',
+    date: 'after',
+    compare: false,
+    vectors: true,
+    aoiMode: false,
+    split: 0.5,                 // compare reveal, 0..1
+    view: { cx: GRID / 2, cy: GRID / 2, z: 1 },
+    evidence: [],               // [{bbox, label, note, t}] t = draw progress
+    focusMask: 0,               // 0..1 dim outside the focused evidence box
+    customAoi: null,            // {x0,y0,x1,y1} in grid coords
+    drawing: null,
+    scene: null,
+    measures: null,
+    roadStates: new Map(),
+    cutOff: new Set(),
+  };
+
+  /* ---- geometry ---------------------------------------------------------- */
+
+  let W = 0, H = 0, fit = 1, ox0 = 0, oy0 = 0, dpr = 1;
+
+  function measure() {
+    const r = el.stage.getBoundingClientRect();
+    W = Math.max(1, r.width);
+    H = Math.max(1, r.height);
+    fit = Math.min(W, H) / GRID;
+    const base = GRID * fit;
+    ox0 = (W - base) / 2;
+    oy0 = (H - base) / 2;
+
+    dpr = Math.min(2.5, window.devicePixelRatio || 1);
+    el.overlay.width = Math.round(W * dpr);
+    el.overlay.height = Math.round(H * dpr);
+    el.overlay.style.width = W + 'px';
+    el.overlay.style.height = H + 'px';
+
+    for (const c of [el.after, el.before]) {
+      c.style.left = ox0 + 'px';
+      c.style.top = oy0 + 'px';
+      c.style.width = base + 'px';
+      c.style.height = base + 'px';
+    }
+  }
+
+  function transformOf(v) {
+    const tx = W / 2 - ox0 - v.z * v.cx * fit;
+    const ty = H / 2 - oy0 - v.z * v.cy * fit;
+    return { tx, ty };
+  }
+
+  function project(gx, gy) {
+    const { tx, ty } = transformOf(state.view);
+    return [
+      ox0 + tx + state.view.z * gx * fit,
+      oy0 + ty + state.view.z * gy * fit,
+    ];
+  }
+
+  function unproject(sx, sy) {
+    const { tx, ty } = transformOf(state.view);
+    return [
+      (sx - ox0 - tx) / (state.view.z * fit),
+      (sy - oy0 - ty) / (state.view.z * fit),
+    ];
+  }
+
+  function applyTransform() {
+    const { tx, ty } = transformOf(state.view);
+    const t = `translate(${tx.toFixed(2)}px, ${ty.toFixed(2)}px) scale(${state.view.z})`;
+    el.after.style.transform = t;
+    el.before.style.transform = t;
+  }
+
+  /* ---- imagery ----------------------------------------------------------- */
+
+  function paintImagery() {
+    const afterCanvas = renderLayer(state.scenario, state.layer, state.date);
+    // The "before" plate is the same layer at the other date, so the swipe
+    // always compares like with like.
+    const otherDate = state.date === 'after' ? 'before' : 'after';
+    const beforeCanvas = renderLayer(state.scenario, state.layer, otherDate);
+
+    blit(el.after, afterCanvas);
+    blit(el.before, beforeCanvas);
+
+    const sc = opts.getScenarioMeta(state.scenario);
+    const [lLabel, rLabel] = state.date === 'after'
+      ? [sc.before_label, sc.after_label]
+      : [sc.after_label, sc.before_label];
+    el.tagL.textContent = lLabel;
+    el.tagR.textContent = rLabel;
+  }
+
+  function blit(target, source) {
+    if (target.width !== source.width) {
+      target.width = source.width;
+      target.height = source.height;
+    }
+    const c = target.getContext('2d');
+    c.clearRect(0, 0, target.width, target.height);
+    c.drawImage(source, 0, 0);
+  }
+
+  function applyCompare() {
+    const on = state.compare;
+    el.stage.classList.toggle('comparing', on);
+    el.handle.hidden = !on;
+    el.tagL.hidden = !on;
+    el.tagR.hidden = !on;
+    if (!on) {
+      el.layerBefore.style.clipPath = 'inset(0 100% 0 0)';
+      return;
+    }
+    const p = state.split * 100;
+    el.layerBefore.style.clipPath = `inset(0 ${(100 - p).toFixed(3)}% 0 0)`;
+    el.handle.style.left = p + '%';
+    el.handle.setAttribute('aria-valuenow', Math.round(p));
+  }
+
+  /* ---- vector overlay ---------------------------------------------------- */
+
+  const STATUS_STYLE = {
+    open: { color: '#74D06D', dash: [], label: 'Open' },
+    restricted: { color: '#EAB84A', dash: [11, 5], label: 'Restricted' },
+    impassable: { color: '#FF6F55', dash: [3, 4], label: 'Impassable' },
+  };
+
+  function drawOverlay() {
+    octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    octx.clearRect(0, 0, W, H);
+
+    drawAoiFootprint();
+    if (state.vectors) drawVectors();
+    if (state.focusMask > 0.01) drawFocusMask();
+    drawEvidence();
+    if (state.customAoi) drawCustomAoi();
+    if (state.drawing) drawDrawing();
+    updateScaleBar();
+  }
+
+  function drawAoiFootprint() {
+    const [x0, y0] = project(0, 0);
+    const [x1, y1] = project(GRID, GRID);
+    octx.save();
+    octx.strokeStyle = 'rgba(238,232,218,.42)';
+    octx.lineWidth = 1;
+    octx.setLineDash([6, 5]);
+    octx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+    octx.setLineDash([]);
+    // Corner ticks read as a survey frame rather than as a plain border.
+    const L = 16;
+    octx.strokeStyle = 'rgba(238,232,218,.75)';
+    octx.lineWidth = 1.5;
+    for (const [cx, cy, dx, dy] of [
+      [x0, y0, 1, 1], [x1, y0, -1, 1], [x0, y1, 1, -1], [x1, y1, -1, -1],
+    ]) {
+      octx.beginPath();
+      octx.moveTo(cx + dx * L, cy);
+      octx.lineTo(cx, cy);
+      octx.lineTo(cx, cy + dy * L);
+      octx.stroke();
+    }
+    octx.restore();
+  }
+
+  function drawVectors() {
+    const scene = state.scene;
+    if (!scene) return;
+
+    octx.save();
+    octx.lineCap = 'round';
+    octx.lineJoin = 'round';
+
+    // Roads, coloured and dashed by measured status.
+    for (const road of scene.roads || []) {
+      const st = state.roadStates.get(road.id);
+      const style = st ? STATUS_STYLE[st.status] : { color: 'rgba(230,225,212,.55)', dash: [] };
+      const width = road.cls === 'national' ? 3.2 : road.cls === 'state' ? 2.6 : 2;
+
+      // A dark casing under every line keeps it legible over both the bright
+      // urban returns in SAR and the pale cloud in optical.
+      octx.strokeStyle = 'rgba(8,11,15,.55)';
+      octx.lineWidth = width + 2.4;
+      octx.setLineDash([]);
+      strokePath(road.pts);
+
+      octx.strokeStyle = style.color;
+      octx.lineWidth = width;
+      octx.setLineDash(style.dash);
+      strokePath(road.pts);
+      octx.setLineDash([]);
+
+      // Mark where the centreline first enters water, so "impassable" has a
+      // visible cause and not just a colour.
+      if (st && st.breach_at) {
+        const p = pointOnPath(road.pts, st.breach_at[0]);
+        const [sx, sy] = project(p[0], p[1]);
+        octx.strokeStyle = '#FF6F55';
+        octx.lineWidth = 2;
+        const r = 5;
+        octx.beginPath();
+        octx.moveTo(sx - r, sy - r); octx.lineTo(sx + r, sy + r);
+        octx.moveTo(sx + r, sy - r); octx.lineTo(sx - r, sy + r);
+        octx.stroke();
+      }
+    }
+
+    // Settlements.
+    for (const s of scene.settlements || []) {
+      const [sx, sy] = project(s.x, s.y);
+      if (sx < -60 || sy < -60 || sx > W + 60 || sy > H + 60) continue;
+      const cut = state.cutOff.has(s.id);
+      const sName = placeName(state.scenario, s.id);
+
+      octx.beginPath();
+      octx.arc(sx, sy, 4.5, 0, Math.PI * 2);
+      octx.fillStyle = cut ? '#FF6F55' : '#EDE7D9';
+      octx.strokeStyle = 'rgba(8,11,15,.7)';
+      octx.lineWidth = 1.5;
+      octx.fill();
+      octx.stroke();
+
+      if (cut) {
+        // A second ring, so isolation is not carried by colour alone.
+        octx.beginPath();
+        octx.arc(sx, sy, 9, 0, Math.PI * 2);
+        octx.strokeStyle = '#FF6F55';
+        octx.lineWidth = 1.4;
+        octx.setLineDash([3, 3]);
+        octx.stroke();
+        octx.setLineDash([]);
+      }
+
+      label(sx + 11, sy + 3.5, cut ? sName + '  · CUT OFF' : sName,
+        cut ? '#FFD9CF' : '#E6E0D0', cut);
+    }
+
+    if (scene.hub) {
+      const [sx, sy] = project(scene.hub.x, scene.hub.y);
+      octx.save();
+      octx.translate(sx, sy);
+      octx.rotate(Math.PI / 4);
+      octx.fillStyle = '#3ADCE8';
+      octx.strokeStyle = 'rgba(8,11,15,.7)';
+      octx.lineWidth = 1.5;
+      octx.fillRect(-5, -5, 10, 10);
+      octx.strokeRect(-5, -5, 10, 10);
+      octx.restore();
+      label(sx + 12, sy + 3.5, placeName(state.scenario, scene.hub.id), '#B9F0F4', false);
+    }
+
+    octx.restore();
+  }
+
+  function strokePath(pts) {
+    octx.beginPath();
+    for (let i = 0; i < pts.length; i++) {
+      const [sx, sy] = project(pts[i][0], pts[i][1]);
+      if (i === 0) octx.moveTo(sx, sy);
+      else octx.lineTo(sx, sy);
+    }
+    octx.stroke();
+  }
+
+  function pointOnPath(pts, t) {
+    const idx = clamp(t * (pts.length - 1), 0, pts.length - 1.001);
+    const i = Math.floor(idx), f = idx - i;
+    return [
+      pts[i][0] + (pts[i + 1][0] - pts[i][0]) * f,
+      pts[i][1] + (pts[i + 1][1] - pts[i][1]) * f,
+    ];
+  }
+
+  function label(x, y, text, color, strong) {
+    octx.font = (strong ? '600 ' : '') + '11px "Cascadia Mono", Consolas, monospace';
+    const w = octx.measureText(text).width;
+    octx.fillStyle = 'rgba(8,11,15,.62)';
+    octx.fillRect(x - 3, y - 11, w + 6, 15);
+    octx.fillStyle = color;
+    octx.fillText(text, x, y);
+  }
+
+  /* Dim everything outside the focused evidence box. This is the single change
+   * that makes "the answer said X, here is X" unmissable across a room. */
+  function drawFocusMask() {
+    const ev = state.evidence[0];
+    if (!ev) return;
+    const [x0, y0] = project(ev.bbox.x0, ev.bbox.y0);
+    const [x1, y1] = project(ev.bbox.x1, ev.bbox.y1);
+    octx.save();
+    octx.fillStyle = `rgba(9,12,16,${0.55 * state.focusMask})`;
+    octx.beginPath();
+    octx.rect(0, 0, W, H);
+    octx.rect(x0, y0, x1 - x0, y1 - y0);
+    octx.fill('evenodd');
+    octx.restore();
+  }
+
+  function drawEvidence() {
+    for (const ev of state.evidence) {
+      if (ev.t <= 0) continue;
+      const [x0, y0] = project(ev.bbox.x0, ev.bbox.y0);
+      const [x1, y1] = project(ev.bbox.x1, ev.bbox.y1);
+      const w = x1 - x0, h = y1 - y0;
+      const perim = 2 * (w + h);
+
+      octx.save();
+      octx.strokeStyle = '#3ADCE8';
+      octx.lineWidth = 2;
+      octx.shadowColor = 'rgba(58,220,232,.55)';
+      octx.shadowBlur = 10;
+      // Draw the box on progressively, starting from the top-left corner.
+      octx.setLineDash([perim, perim]);
+      octx.lineDashOffset = perim * (1 - ev.t);
+      octx.strokeRect(x0, y0, w, h);
+      octx.setLineDash([]);
+      octx.shadowBlur = 0;
+
+      if (ev.t > 0.98) {
+        // Corner brackets, drawn once the box has landed.
+        const L = Math.min(18, Math.min(w, h) * 0.3);
+        octx.lineWidth = 3;
+        for (const [cx, cy, dx, dy] of [
+          [x0, y0, 1, 1], [x1, y0, -1, 1], [x0, y1, 1, -1], [x1, y1, -1, -1],
+        ]) {
+          octx.beginPath();
+          octx.moveTo(cx + dx * L, cy);
+          octx.lineTo(cx, cy);
+          octx.lineTo(cx, cy + dy * L);
+          octx.stroke();
+        }
+
+        const text = ev.label;
+        octx.font = '600 11.5px "Cascadia Mono", Consolas, monospace';
+        const tw = octx.measureText(text).width;
+        const ly = y0 - 9 < 16 ? y1 + 20 : y0 - 9;
+        octx.fillStyle = 'rgba(10,107,117,.95)';
+        octx.fillRect(x0, ly - 13, tw + 14, 19);
+        octx.fillStyle = '#EAFBFC';
+        octx.fillText(text, x0 + 7, ly);
+      }
+      octx.restore();
+    }
+  }
+
+  function drawCustomAoi() {
+    const a = state.customAoi;
+    const [x0, y0] = project(a.x0, a.y0);
+    const [x1, y1] = project(a.x1, a.y1);
+    octx.save();
+    octx.strokeStyle = '#E39A44';
+    octx.lineWidth = 2;
+    octx.setLineDash([7, 4]);
+    octx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+    octx.setLineDash([]);
+    octx.fillStyle = 'rgba(227,154,68,.10)';
+    octx.fillRect(x0, y0, x1 - x0, y1 - y0);
+
+    const km = Math.abs((a.x1 - a.x0) * GSD_M) / 1000;
+    const km2 = km * (Math.abs((a.y1 - a.y0) * GSD_M) / 1000);
+    label(Math.min(x0, x1) + 4, Math.min(y0, y1) - 7,
+      `AOI-USER · ${km2.toFixed(1)} km²`, '#F6D9AE', true);
+    octx.restore();
+  }
+
+  function drawDrawing() {
+    const d = state.drawing;
+    const [x0, y0] = project(d.x0, d.y0);
+    const [x1, y1] = project(d.x1, d.y1);
+    octx.save();
+    octx.strokeStyle = '#E39A44';
+    octx.lineWidth = 1.5;
+    octx.setLineDash([4, 4]);
+    octx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+    octx.restore();
+  }
+
+  function updateScaleBar() {
+    const mPerPx = GSD_M / (state.view.z * fit);
+    const target = 92 * mPerPx;
+    const pow = Math.pow(10, Math.floor(Math.log10(target)));
+    const n = target / pow;
+    const rounded = (n >= 5 ? 5 : n >= 2 ? 2 : 1) * pow;
+    el.scaleBar.style.width = Math.round(rounded / mPerPx) + 'px';
+    el.scaleText.textContent = rounded >= 1000
+      ? (rounded / 1000) + ' km'
+      : Math.round(rounded) + ' m';
+  }
+
+  /* ---- legend ------------------------------------------------------------ */
+
+  function updateLegend() {
+    const showRoads = state.vectors && state.scene && state.scene.roads
+      && state.roadStates.size > 0;
+    if (!showRoads) {
+      el.legend.hidden = true;
+      return;
+    }
+    const counts = { open: 0, restricted: 0, impassable: 0 };
+    for (const st of state.roadStates.values()) counts[st.status]++;
+    el.legend.hidden = false;
+    el.legend.innerHTML = '<h4>Road status</h4>' + Object.entries(STATUS_STYLE)
+      .map(([k, s]) => `<div class="row"><span class="swatch${s.dash.length ? ' dashed' : ''}" style="${s.dash.length ? 'color:' + s.color : 'background:' + s.color}"></span>${s.label} · ${counts[k]}</div>`)
+      .join('') + '<div class="row" style="margin-top:4px;opacity:.75">&times; first breach point</div>';
+  }
+
+  /* ---- footer ------------------------------------------------------------ */
+
+  function updateFooter() {
+    // The resize observer fires as soon as the stage is observed, which is
+    // before any scene has been loaded. Nothing to report until then.
+    if (!state.measures) return;
+    const sc = opts.getScenarioMeta(state.scenario);
+    const layerMeta = LAYERS.find((l) => l.id === state.layer);
+    const wm = waterMethod(state.scenario, state.date);
+    const dateLabel = state.date === 'after' ? sc.after_label : sc.before_label;
+    const hint = state.layer === 'water' ? wm.label : layerMeta.hint;
+    const cloud = state.date === 'after'
+      ? state.measures.cloud_after_pct : state.measures.cloud_before_pct;
+
+    el.footer.innerHTML = [
+      kv('AOI', sc.aoi),
+      kv('PASS', dateLabel),
+      kv('LAYER', hint),
+      kv('CLOUD', cloud + '%'),
+      kv('GSD', GSD_M + ' m'),
+      kv('EXTENT', (GRID * GSD_M / 1000).toFixed(1) + ' km'),
+      kv('ZOOM', state.view.z.toFixed(2) + '×'),
+    ].join('');
+  }
+
+  function kv(k, v) {
+    return `<span class="kv"><span class="k">${k}</span><span class="v">${v}</span></span>`;
+  }
+
+  /* ---- render loop ------------------------------------------------------- */
+
+  let raf = null;
+  function invalidate() {
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = null;
+      applyTransform();
+      drawOverlay();
+      updateFooter();
+    });
+  }
+
+  /* ---- viewport flights -------------------------------------------------- */
+
+  let flight = null;
+  function flyTo(target, ms = FLIGHT_MS) {
+    const from = { ...state.view };
+    const to = {
+      cx: clamp(target.cx, 0, GRID),
+      cy: clamp(target.cy, 0, GRID),
+      z: clamp(target.z, MIN_ZOOM, MAX_ZOOM),
+    };
+    const start = performance.now();
+    flight = { from, to, start, ms };
+    step();
+
+    function step() {
+      const now = performance.now();
+      const t = clamp((now - start) / ms, 0, 1);
+      const e = easeInOut(t);
+      state.view.cx = from.cx + (to.cx - from.cx) * e;
+      state.view.cy = from.cy + (to.cy - from.cy) * e;
+      state.view.z = from.z + (to.z - from.z) * e;
+      applyTransform();
+      drawOverlay();
+      updateFooter();
+      if (t < 1 && flight && flight.start === start) requestAnimationFrame(step);
+      else if (flight && flight.start === start) flight = null;
+    }
+  }
+
+  /* Capped separately from MAX_ZOOM: the user may zoom in as far as they like,
+   * but an automatic flight should not park the view past the point where the
+   * imagery is being upscaled rather than resolved. A wider frame also reads
+   * better anyway — you can see the road and the water either side of it. */
+  const MAX_FLIGHT_ZOOM = 3.4;
+
+  function zoomToBbox(bbox, pad = 0.62) {
+    const bw = Math.max(8, Math.max(bbox.x1 - bbox.x0, bbox.y1 - bbox.y0));
+    flyTo({
+      cx: (bbox.x0 + bbox.x1) / 2,
+      cy: (bbox.y0 + bbox.y1) / 2,
+      z: clamp((GRID * pad) / bw, MIN_ZOOM, MAX_FLIGHT_ZOOM),
+    });
+  }
+
+  /* Animate a value from 0 to 1 and repaint each frame. */
+  function tween(ms, onFrame, onDone) {
+    const start = performance.now();
+    (function step() {
+      const t = clamp((performance.now() - start) / ms, 0, 1);
+      onFrame(easeInOut(t));
+      drawOverlay();
+      if (t < 1) requestAnimationFrame(step);
+      else if (onDone) onDone();
+    })();
+  }
+
+  /* ---- interaction ------------------------------------------------------- */
+
+  let drag = null;
+  let splitFromStage = false;
+
+  el.stage.addEventListener('pointerdown', (e) => {
+    if (e.target === el.handle || el.handle.contains(e.target)) return;
+    el.stage.setPointerCapture(e.pointerId);
+    const rect = el.stage.getBoundingClientRect();
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+
+    if (state.aoiMode) {
+      const [gx, gy] = unproject(sx, sy);
+      state.drawing = { x0: gx, y0: gy, x1: gx, y1: gy };
+      el.stage.classList.add('drawing');
+    } else if (state.compare) {
+      // While comparing, the whole frame is the swipe control. Making the
+      // presenter find a 2px handle mid-demo is the wrong trade — panning is
+      // still available on the wheel and the zoom buttons.
+      splitFromStage = true;
+      setSplitFromClientX(e.clientX);
+    } else {
+      drag = { sx, sy, cx: state.view.cx, cy: state.view.cy };
+      el.stage.classList.add('dragging');
+    }
+  });
+
+  el.stage.addEventListener('pointermove', (e) => {
+    const rect = el.stage.getBoundingClientRect();
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+
+    if (state.drawing) {
+      const [gx, gy] = unproject(sx, sy);
+      state.drawing.x1 = clamp(gx, 0, GRID);
+      state.drawing.y1 = clamp(gy, 0, GRID);
+      invalidate();
+      return;
+    }
+    if (splitFromStage) {
+      setSplitFromClientX(e.clientX);
+      return;
+    }
+    if (!drag) return;
+    flight = null;
+    const k = state.view.z * fit;
+    state.view.cx = clamp(drag.cx - (sx - drag.sx) / k, 0, GRID);
+    state.view.cy = clamp(drag.cy - (sy - drag.sy) / k, 0, GRID);
+    invalidate();
+  });
+
+  function endPointer(e) {
+    if (state.drawing) {
+      const d = state.drawing;
+      const box = {
+        x0: Math.min(d.x0, d.x1), y0: Math.min(d.y0, d.y1),
+        x1: Math.max(d.x0, d.x1), y1: Math.max(d.y0, d.y1),
+      };
+      state.drawing = null;
+      el.stage.classList.remove('drawing');
+      // Ignore an accidental click; only a real drag defines an AOI.
+      if (box.x1 - box.x0 > 6 && box.y1 - box.y0 > 6) {
+        state.customAoi = box;
+        if (opts.onAoi) opts.onAoi(box);
+      }
+      setAoiMode(false);
+      invalidate();
+    }
+    drag = null;
+    splitFromStage = false;
+    el.stage.classList.remove('dragging');
+    if (e && e.pointerId != null && el.stage.hasPointerCapture(e.pointerId)) {
+      el.stage.releasePointerCapture(e.pointerId);
+    }
+  }
+  el.stage.addEventListener('pointerup', endPointer);
+  el.stage.addEventListener('pointercancel', endPointer);
+
+  el.stage.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    flight = null;
+    const rect = el.stage.getBoundingClientRect();
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    const [gx, gy] = unproject(sx, sy);
+    const factor = Math.exp(-e.deltaY * 0.0016);
+    const z = clamp(state.view.z * factor, MIN_ZOOM, MAX_ZOOM);
+    // Keep the grid point under the cursor pinned while zooming.
+    const k = z * fit;
+    state.view.cx = clamp(gx - (sx - W / 2) / k, 0, GRID);
+    state.view.cy = clamp(gy - (sy - H / 2) / k, 0, GRID);
+    state.view.z = z;
+    invalidate();
+  }, { passive: false });
+
+  /* Compare handle drag */
+  let splitDrag = false;
+  function setSplitFromClientX(clientX) {
+    const rect = el.stage.getBoundingClientRect();
+    state.split = clamp((clientX - rect.left) / rect.width, 0.02, 0.98);
+    applyCompare();
+  }
+  el.handle.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    splitDrag = true;
+    el.handle.setPointerCapture(e.pointerId);
+  });
+  el.handle.addEventListener('pointermove', (e) => {
+    if (splitDrag) setSplitFromClientX(e.clientX);
+  });
+  el.handle.addEventListener('pointerup', (e) => {
+    splitDrag = false;
+    if (el.handle.hasPointerCapture(e.pointerId)) el.handle.releasePointerCapture(e.pointerId);
+  });
+  el.handle.addEventListener('keydown', (e) => {
+    const step = e.shiftKey ? 0.1 : 0.02;
+    if (e.key === 'ArrowLeft') { state.split = clamp(state.split - step, 0.02, 0.98); applyCompare(); e.preventDefault(); }
+    if (e.key === 'ArrowRight') { state.split = clamp(state.split + step, 0.02, 0.98); applyCompare(); e.preventDefault(); }
+  });
+
+  const ro = new ResizeObserver(() => {
+    measure();
+    applyCompare();
+    invalidate();
+  });
+  ro.observe(el.stage);
+
+  /* ---- public API -------------------------------------------------------- */
+
+  function loadScenario(scenarioId) {
+    state.scenario = scenarioId;
+    state.scene = buildScene(scenarioId);
+    state.measures = analyzeScene(scenarioId);
+    state.roadStates = new Map();
+    for (const r of state.measures.roads || []) state.roadStates.set(r.id, r);
+    state.cutOff = new Set(
+      (state.measures.reachability || []).filter((r) => !r.reachable).map((r) => r.id)
+    );
+    state.evidence = [];
+    state.focusMask = 0;
+    state.customAoi = null;
+    state.view = { cx: GRID / 2, cy: GRID / 2, z: 1 };
+    measure();
+    paintImagery();
+    applyCompare();
+    updateLegend();
+    invalidate();
+  }
+
+  function setLayer(id) {
+    if (state.layer === id) return;
+    state.layer = id;
+    // Cross-fade rather than cut, so a layer change reads as the same place
+    // seen differently rather than as a new picture.
+    el.after.style.transition = 'opacity .22s ease';
+    el.after.style.opacity = '0.15';
+    setTimeout(() => {
+      paintImagery();
+      el.after.style.opacity = '1';
+      setTimeout(() => { el.after.style.transition = ''; }, 240);
+    }, 130);
+    invalidate();
+    if (opts.onChange) opts.onChange(getState());
+  }
+
+  function setDate(d) {
+    if (state.date === d) return;
+    state.date = d;
+    paintImagery();
+    invalidate();
+    if (opts.onChange) opts.onChange(getState());
+  }
+
+  function setCompare(on) {
+    state.compare = on;
+    applyCompare();
+    updateLegend();
+    if (opts.onChange) opts.onChange(getState());
+  }
+
+  function setVectors(on) {
+    state.vectors = on;
+    updateLegend();
+    invalidate();
+    if (opts.onChange) opts.onChange(getState());
+  }
+
+  function setAoiMode(on) {
+    state.aoiMode = on;
+    el.stage.classList.toggle('drawing', on);
+    if (opts.onChange) opts.onChange(getState());
+  }
+
+  function clearAoi() {
+    state.customAoi = null;
+    invalidate();
+  }
+
+  /** Highlight one or more evidence regions, drawing each box on. */
+  function showEvidence(regions, { fly = true, dim = true } = {}) {
+    state.evidence = (regions || []).filter((r) => r && r.bbox)
+      .map((r) => ({ bbox: r.bbox, label: r.label, note: r.note, t: 0 }));
+    if (!state.evidence.length) {
+      state.focusMask = 0;
+      invalidate();
+      return;
+    }
+    if (fly) zoomToBbox(state.evidence[0].bbox);
+    tween(560, (e) => {
+      for (const ev of state.evidence) ev.t = e;
+      state.focusMask = dim ? e : 0;
+    });
+  }
+
+  function clearEvidence() {
+    tween(300, (e) => {
+      for (const ev of state.evidence) ev.t = 1 - e;
+      state.focusMask = state.focusMask * (1 - e);
+    }, () => {
+      state.evidence = [];
+      state.focusMask = 0;
+      drawOverlay();
+    });
+  }
+
+  /** Apply the map_directive an answer carries. */
+  function applyDirective(d) {
+    if (!d) return;
+    if (d.layer && d.layer !== state.layer) setLayer(d.layer);
+    if (d.date && d.date !== state.date) setDate(d.date);
+    // Deliberately does not act on d.compare. The directive's compare flag is
+    // surfaced as a "Compare passes" action instead: an answer arriving should
+    // land on one clean frame, not silently split the view under the evidence
+    // box it just drew.
+    setCompare(false);
+    if (opts.onChange) opts.onChange(getState());
+  }
+
+  function resetView() { flyTo({ cx: GRID / 2, cy: GRID / 2, z: 1 }); }
+  function zoomBy(f) {
+    flyTo({ cx: state.view.cx, cy: state.view.cy, z: state.view.z * f }, 260);
+  }
+
+  function getState() {
+    return {
+      scenario: state.scenario, layer: state.layer, date: state.date,
+      compare: state.compare, vectors: state.vectors, aoiMode: state.aoiMode,
+      customAoi: state.customAoi,
+    };
+  }
+
+  return {
+    loadScenario, setLayer, setDate, setCompare, setVectors, setAoiMode,
+    clearAoi, showEvidence, clearEvidence, applyDirective, resetView, zoomBy,
+    zoomToBbox, getState,
+  };
+}
+  return { createMap: createMap };
+})();
+
+/* ===== src/main.js ===== */
+__m["src/main.js"] = (function () {
+  const { queryStream, SCENARIOS, getScenario, suggestions, indexStats, LAYERS, CONTRACT_VERSION, IS_MOCK } = __m["src/api/mock.js"];
+  const { prewarm } = __m["src/render.js"];
+  const { createMap } = __m["src/ui/map.js"];
+  const { createChat } = __m["src/ui/chat.js"];
+/* ---------------------------------------------------------------------------
+ * main.js — wiring
+ *
+ * Owns the toolbar, the scenario switcher, keyboard shortcuts, and the one
+ * path a question takes: composer -> api.queryStream -> trace steps into the
+ * chat -> answer -> map directive applied -> evidence drawn.
+ *
+ * The only module that talks to the data layer is api/mock.js. Swapping that
+ * import for a real client is the whole migration; nothing here knows what is
+ * behind it beyond the response shape.
+ * ------------------------------------------------------------------------- */
+
+
+
+
+
+
+const el = {
+  scenarios: document.getElementById('scenarios'),
+  layerSeg: document.getElementById('layerSeg'),
+  dateSeg: document.getElementById('dateSeg'),
+  compareBtn: document.getElementById('compareBtn'),
+  vectorsBtn: document.getElementById('vectorsBtn'),
+  aoiBtn: document.getElementById('aoiBtn'),
+  zoomIn: document.getElementById('zoomIn'),
+  zoomOut: document.getElementById('zoomOut'),
+  zoomReset: document.getElementById('zoomReset'),
+  veil: document.getElementById('veil'),
+  veilInner: document.getElementById('veilInner'),
+  progressFill: document.getElementById('progressFill'),
+  veilStep: document.getElementById('veilStep'),
+  form: document.getElementById('composerForm'),
+  input: document.getElementById('queryInput'),
+  askBtn: document.getElementById('askBtn'),
+  chips: document.getElementById('chips'),
+  chatTitle: document.getElementById('chatTitle'),
+  chatBlurb: document.getElementById('chatBlurb'),
+  indexLine: document.getElementById('indexLine'),
+  topbarMeta: document.getElementById('topbarMeta'),
+};
+
+const app = {
+  scenario: 'flood',
+  busy: false,
+  lastQuery: null,
+  lastResponse: null,
+};
+
+/* ---- map + chat ---------------------------------------------------------- */
+
+const map = createMap({
+  getScenarioMeta: getScenario,
+  onChange: syncToolbar,
+  onAoi: (box) => {
+    // A drawn AOI is a real interaction, so acknowledge it in the log rather
+    // than silently changing state.
+    const km = ((box.x1 - box.x0) * 33.3 / 1000) * ((box.y1 - box.y0) * 33.3 / 1000);
+    chat.addUserMessage(`Set area of interest — ${km.toFixed(1)} km² sub-region of ${getScenario(app.scenario).aoi}`);
+    syncToolbar();
+  },
+});
+
+const chat = createChat({
+  onViewEvidence: (r) => {
+    if (r.map_directive) map.applyDirective(r.map_directive);
+    map.showEvidence(r.evidence, { fly: true, dim: true });
+  },
+  onViewAllEvidence: (r) => {
+    if (r.map_directive) map.applyDirective(r.map_directive);
+    map.showEvidence(r.all_evidence, { fly: true, dim: false });
+  },
+  onCompare: (r) => {
+    if (r.map_directive) map.applyDirective(r.map_directive);
+    map.setCompare(true);
+    map.clearEvidence();
+    map.resetView();
+    syncToolbar();
+  },
+  onRetry: () => {
+    if (app.lastQuery) ask(app.lastQuery);
+  },
+});
+
+/* ---- chrome -------------------------------------------------------------- */
+
+function buildScenarioNav() {
+  el.scenarios.innerHTML = '';
+  for (const s of SCENARIOS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'scenario-btn';
+    b.setAttribute('aria-pressed', String(s.id === app.scenario));
+    b.dataset.id = s.id;
+    b.append(document.createTextNode(s.name));
+    if (s.flag) {
+      const f = document.createElement('span');
+      f.className = 'flag';
+      f.textContent = s.flag.toUpperCase();
+      b.appendChild(f);
+    }
+    b.addEventListener('click', () => selectScenario(s.id));
+    el.scenarios.appendChild(b);
+  }
+}
+
+function buildSegs() {
+  el.layerSeg.innerHTML = '';
+  for (const l of LAYERS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = l.name;
+    b.title = l.hint;
+    b.dataset.id = l.id;
+    b.addEventListener('click', () => { map.setLayer(l.id); syncToolbar(); });
+    el.layerSeg.appendChild(b);
+  }
+  renderDateSeg();
+}
+
+function renderDateSeg() {
+  const sc = getScenario(app.scenario);
+  el.dateSeg.innerHTML = '';
+  for (const [id, label] of [['before', sc.before_label], ['after', sc.after_label]]) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = label;
+    b.dataset.id = id;
+    b.addEventListener('click', () => { map.setDate(id); syncToolbar(); });
+    el.dateSeg.appendChild(b);
+  }
+}
+
+function syncToolbar() {
+  const s = map.getState();
+  for (const b of el.layerSeg.children) {
+    b.setAttribute('aria-pressed', String(b.dataset.id === s.layer));
+  }
+  for (const b of el.dateSeg.children) {
+    b.setAttribute('aria-pressed', String(b.dataset.id === s.date));
+  }
+  el.compareBtn.setAttribute('aria-pressed', String(s.compare));
+  el.vectorsBtn.setAttribute('aria-pressed', String(s.vectors));
+  el.aoiBtn.setAttribute('aria-pressed', String(s.aoiMode));
+  el.aoiBtn.lastChild.textContent = s.customAoi && !s.aoiMode ? ' AOI set' : ' Draw AOI';
+}
+
+function renderChips() {
+  el.chips.innerHTML = '';
+  for (const q of suggestions(app.scenario)) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.textContent = q;
+    b.addEventListener('click', () => ask(q));
+    el.chips.appendChild(b);
+  }
+}
+
+function renderChatHead() {
+  const sc = getScenario(app.scenario);
+  const stats = indexStats();
+  el.chatTitle.textContent = sc.district;
+  el.chatBlurb.textContent = sc.summary;
+  el.indexLine.textContent =
+    `INDEX ${stats.tiles} tiles · ${stats.scenarios} AOIs · ${stats.vocabulary}-term ${stats.space}`;
+  el.topbarMeta.innerHTML =
+    `contract ${CONTRACT_VERSION}<br>${IS_MOCK ? 'mock data layer' : 'live backend'}`;
+}
+
+/* ---- scenario loading ---------------------------------------------------- */
+
+async function selectScenario(id) {
+  if (app.busy || id === app.scenario) return;
+  app.scenario = id;
+  for (const b of el.scenarios.children) {
+    b.setAttribute('aria-pressed', String(b.dataset.id === id));
+  }
+  renderDateSeg();
+  renderChips();
+  renderChatHead();
+  await loadScene(id);
+}
+
+async function loadScene(id) {
+  showVeil('Generating scene',
+    'Rendering optical, SAR and water-index layers for both passes.');
+  try {
+    await prewarm(id, (frac, combo) => {
+      el.progressFill.style.width = Math.round(frac * 100) + '%';
+      el.veilStep.textContent = `${combo[0]} · ${combo[1]}`;
+    });
+    map.loadScenario(id);
+    const sc = getScenario(id);
+    // Flood opens on SAR, because that is the sensor the story is about.
+    map.setLayer(id === 'flood' ? 'sar' : 'optical');
+    map.setDate('after');
+    map.setCompare(false);
+    syncToolbar();
+    chat.showEmptyState(sc, indexStats());
+    hideVeil();
+  } catch (err) {
+    showError(err);
+  }
+}
+
+function showVeil(title, body) {
+  el.veil.hidden = false;
+  el.veil.classList.remove('fading', 'veil-error');
+  el.veilInner.innerHTML = `
+    <div class="veil-title"></div>
+    <div class="veil-body"></div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="veil-step" id="veilStep">&nbsp;</div>`;
+  el.veilInner.querySelector('.veil-title').textContent = title;
+  el.veilInner.querySelector('.veil-body').textContent = body;
+  el.progressFill = el.veilInner.querySelector('#progressFill');
+  el.veilStep = el.veilInner.querySelector('#veilStep');
+}
+
+function hideVeil() {
+  el.veil.classList.add('fading');
+  setTimeout(() => { el.veil.hidden = true; }, 380);
+}
+
+function showError(err) {
+  el.veil.hidden = false;
+  el.veil.classList.remove('fading');
+  el.veil.classList.add('veil-error');
+  el.veilInner.innerHTML = `
+    <div class="veil-title">Scene could not be generated</div>
+    <div class="veil-body"></div>
+    <button class="veil-retry" type="button">Try again</button>`;
+  el.veilInner.querySelector('.veil-body').textContent =
+    String(err && err.message ? err.message : err);
+  el.veilInner.querySelector('.veil-retry')
+    .addEventListener('click', () => loadScene(app.scenario));
+  // eslint-disable-next-line no-console
+  console.error('[satquery] scene generation failed', err);
+}
+
+/* ---- the query path ------------------------------------------------------ */
+
+async function ask(text) {
+  const q = String(text || '').trim();
+  if (!q || app.busy) return;
+
+  app.busy = true;
+  app.lastQuery = q;
+  setBusy(true);
+  el.input.value = '';
+
+  chat.addUserMessage(q);
+  map.clearEvidence();
+  const turn = chat.beginAgentMessage();
+
+  try {
+    const response = await queryStream(q, { scenario: app.scenario }, (event) => {
+      if (event.type === 'trace') turn.onTraceStep(event.step);
+    });
+
+    app.lastResponse = response;
+    await turn.complete(response);
+
+    // The answer moves the map: layer, date and compare first, then the
+    // evidence box, so the reroute to SAR is visible before the highlight
+    // lands on it.
+    if (response.map_directive) {
+      map.applyDirective(response.map_directive);
+      syncToolbar();
+      if (response.answerable && response.evidence && response.evidence.length) {
+        setTimeout(() => map.showEvidence(response.evidence), 260);
+      }
+    }
+  } catch (err) {
+    turn.fail(err);
+    // eslint-disable-next-line no-console
+    console.error('[satquery] query failed', err);
+  } finally {
+    app.busy = false;
+    setBusy(false);
+    el.input.focus();
+  }
+}
+
+function setBusy(busy) {
+  el.askBtn.disabled = busy;
+  el.askBtn.textContent = busy ? 'Working' : 'Ask';
+  for (const c of el.chips.children) c.disabled = busy;
+}
+
+/* ---- events -------------------------------------------------------------- */
+
+el.form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  ask(el.input.value);
+});
+
+el.compareBtn.addEventListener('click', () => {
+  const on = el.compareBtn.getAttribute('aria-pressed') !== 'true';
+  map.setCompare(on);
+  if (on) map.clearEvidence();
+  syncToolbar();
+});
+el.vectorsBtn.addEventListener('click', () => {
+  map.setVectors(el.vectorsBtn.getAttribute('aria-pressed') !== 'true');
+  syncToolbar();
+});
+el.aoiBtn.addEventListener('click', () => {
+  const on = el.aoiBtn.getAttribute('aria-pressed') !== 'true';
+  if (!on) map.clearAoi();
+  map.setAoiMode(on);
+  syncToolbar();
+});
+el.zoomIn.addEventListener('click', () => map.zoomBy(1.5));
+el.zoomOut.addEventListener('click', () => map.zoomBy(1 / 1.5));
+el.zoomReset.addEventListener('click', () => { map.clearEvidence(); map.resetView(); });
+
+/* Keyboard shortcuts, ignored while typing a question. */
+window.addEventListener('keydown', (e) => {
+  const typing = e.target === el.input || e.metaKey || e.ctrlKey || e.altKey;
+  if (typing) return;
+  const k = e.key.toLowerCase();
+  if (k === 'c') { el.compareBtn.click(); e.preventDefault(); }
+  else if (k === 'v') { el.vectorsBtn.click(); e.preventDefault(); }
+  else if (k === 'a') { el.aoiBtn.click(); e.preventDefault(); }
+  else if (k === '1' || k === '2' || k === '3') {
+    const l = LAYERS[Number(k) - 1];
+    if (l) { map.setLayer(l.id); syncToolbar(); }
+    e.preventDefault();
+  } else if (k === '0') { map.clearEvidence(); map.resetView(); e.preventDefault(); }
+  else if (k === '+' || k === '=') { map.zoomBy(1.5); e.preventDefault(); }
+  else if (k === '-') { map.zoomBy(1 / 1.5); e.preventDefault(); }
+  else if (k === '/') { el.input.focus(); e.preventDefault(); }
+});
+
+/* ---- boot ---------------------------------------------------------------- */
+
+buildScenarioNav();
+buildSegs();
+renderChips();
+renderChatHead();
+loadScene(app.scenario).then(() => el.input.focus());
+  return {};
+})();
+</script>
+</body>
+</html>
