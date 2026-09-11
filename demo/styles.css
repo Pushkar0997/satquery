@@ -445,10 +445,12 @@ button { font-family: inherit; color: inherit; }
 .stage-controls button.wide { width: auto; padding: 0 10px; font-size: 11px; }
 
 /* Legend for the vector overlay */
+/* Bottom-right: the top-right corner is where the relief-staging marker and
+   the compare tag both land. */
 .map-legend {
   position: absolute;
   right: 12px;
-  top: 12px;
+  bottom: 48px;
   z-index: 5;
   background: rgba(16, 20, 26, .80);
   border: 1px solid rgba(255, 255, 255, .14);

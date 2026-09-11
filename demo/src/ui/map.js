@@ -444,7 +444,6 @@ export function createMap(opts) {
     const counts = { open: 0, restricted: 0, impassable: 0 };
     for (const st of state.roadStates.values()) counts[st.status]++;
     el.legend.hidden = false;
-    el.legend.style.top = state.compare ? '44px' : '12px';
     el.legend.innerHTML = '<h4>Road status</h4>' + Object.entries(STATUS_STYLE)
       .map(([k, s]) => `<div class="row"><span class="swatch${s.dash.length ? ' dashed' : ''}" style="${s.dash.length ? 'color:' + s.color : 'background:' + s.color}"></span>${s.label} · ${counts[k]}</div>`)
       .join('') + '<div class="row" style="margin-top:4px;opacity:.75">&times; first breach point</div>';
