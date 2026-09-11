@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SatQuery AI — demo build</title>
+<meta name="description" content="Natural-language query over satellite imagery. Demo build with scripted scenarios.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ================= header ================= -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark">SQ</span>
+      <span class="name">SatQuery AI</span>
+      <span class="sub">SIH26167</span>
+    </div>
+
+    <nav class="scenarios" id="scenarios" aria-label="Scenario"></nav>
+
+    <span class="topbar-spacer"></span>
+
+    <!-- Permanent, non-dismissible. See CONTRACT.md INV-1/INV-2. -->
+    <div class="demo-stamp" role="note">
+      <b>DEMO BUILD</b>
+      <span class="long">— scripted scenarios, not live imagery</span>
+    </div>
+
+    <div class="topbar-meta" id="topbarMeta"></div>
+  </header>
+
+  <!-- ================= main ================= -->
+  <main class="main">
+
+    <!-- ---------- map panel ---------- -->
+    <section class="panel-map" aria-label="Imagery viewer">
+
+      <div class="toolbar">
+        <div class="tool-group">
+          <span class="tool-label">Layer</span>
+          <div class="seg" id="layerSeg" role="group" aria-label="Imagery layer"></div>
+        </div>
+
+        <div class="tool-group">
+          <span class="tool-label">Date</span>
+          <div class="seg" id="dateSeg" role="group" aria-label="Acquisition date"></div>
+        </div>
+
+        <div class="tool-group">
+          <button class="toggle" id="compareBtn" aria-pressed="false" title="Before / after swipe (C)">
+            <span class="dot"></span> Compare
+          </button>
+          <button class="toggle" id="vectorsBtn" aria-pressed="true" title="Roads, settlements and status (V)">
+            <span class="dot"></span> Vectors
+          </button>
+          <button class="toggle" id="aoiBtn" aria-pressed="false" title="Drag on the map to define an area of interest (A)">
+            <span class="dot"></span> Draw AOI
+          </button>
+        </div>
+      </div>
+
+      <div class="stage" id="stage">
+        <div class="layer layer-after"><canvas id="canvasAfter"></canvas></div>
+        <div class="layer layer-before" id="layerBefore"><canvas id="canvasBefore"></canvas></div>
+        <canvas class="overlay-canvas" id="overlay"></canvas>
+
+        <div class="compare-handle" id="compareHandle" hidden
+             role="slider" tabindex="0" aria-label="Before / after reveal"
+             aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+          <span class="compare-grip">&#9664;&#9654;</span>
+        </div>
+        <div class="compare-tag left" id="compareTagL" hidden></div>
+        <div class="compare-tag right" id="compareTagR" hidden></div>
+
+        <div class="map-legend" id="legend" hidden></div>
+
+        <div class="stage-badges">
+          <span class="badge synthetic">SYNTHETIC SCENE · procedurally generated</span>
+          <div class="scalebar"><span class="bar" id="scaleBar"></span><span id="scaleText">—</span></div>
+        </div>
+
+        <div class="stage-controls">
+          <button id="zoomIn" title="Zoom in (+)">+</button>
+          <button id="zoomOut" title="Zoom out (−)">&minus;</button>
+          <button id="zoomReset" class="wide" title="Reset view (0)">Reset</button>
+        </div>
+
+        <div class="stage-veil" id="veil">
+          <div class="veil-inner" id="veilInner">
+            <div class="veil-title">Generating scene</div>
+            <div>Rendering optical, SAR and water-index layers for both passes.</div>
+            <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="veil-step" id="veilStep">&nbsp;</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="map-footer" id="mapFooter"></div>
+    </section>
+
+    <!-- ---------- chat panel ---------- -->
+    <section class="panel-chat" aria-label="Query panel">
+      <div class="chat-head">
+        <h2 id="chatTitle">Ask the archive</h2>
+        <p id="chatBlurb"></p>
+        <div class="index-line" id="indexLine"></div>
+      </div>
+
+      <div class="messages" id="messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+
+      <div class="composer">
+        <div class="chips" id="chips"></div>
+        <form class="input-row" id="composerForm">
+          <span class="glyph" aria-hidden="true">&gt;</span>
+          <input id="queryInput" type="text" autocomplete="off" spellcheck="false"
+                 placeholder="Ask about this area&hellip;" aria-label="Your question">
+          <button id="askBtn" type="submit">Ask</button>
+        </form>
+        <div class="composer-foot">
+          <span class="rule-dot">&#9679;</span>
+          <span>Confidence is a real cosine similarity computed per query. Figures in answers are measured from the rendered scene, never asserted.</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
