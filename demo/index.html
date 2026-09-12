@@ -81,6 +81,14 @@
           <div class="scalebar"><span class="bar" id="scaleBar"></span><span id="scaleText">—</span></div>
         </div>
 
+        <!-- Village is real point-cloud data, one photo per query, not a
+             rendered scene — shown only while that scenario is active; see
+             map.js and styles.css .panel-map.real-data. -->
+        <div class="stage-note" id="stageNote">
+          <p>Real point-cloud data — no rendered scene for this AOI.<br>
+          The retrieved tile and its real confidence score appear in the chat panel.</p>
+        </div>
+
         <div class="stage-controls">
           <button id="zoomIn" title="Zoom in (+)">+</button>
           <button id="zoomOut" title="Zoom out (−)">&minus;</button>

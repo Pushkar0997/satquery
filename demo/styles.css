@@ -480,6 +480,47 @@ button { font-family: inherit; color: inherit; }
   height: 3px;
 }
 
+/* Village scenario: a real photo per query, not a procedural scene — the
+   toolbar, badges, legend and zoom controls describe things that do not
+   apply, so they hide and a short note takes their place. See map.js.
+   The toolbar is a `.panel-map` grid row, not an absolutely-positioned
+   overlay like the others — `display: none` on it collapses the `.stage`
+   row to 0 height in this grid (reproduced and confirmed in Chrome; the
+   other three are absolutely positioned inside `.stage` and are unaffected,
+   so they use plain `display: none`). `visibility: hidden` plus zeroing its
+   box keeps the row height calculation intact while still removing it. */
+.panel-map.real-data .toolbar {
+  visibility: hidden;
+  height: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  overflow: hidden;
+}
+.panel-map.real-data .stage-badges,
+.panel-map.real-data .stage-controls,
+.panel-map.real-data .map-legend {
+  display: none;
+}
+.stage-note {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+}
+.panel-map.real-data .stage-note { display: flex; }
+.stage-note p {
+  max-width: 340px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #D8D2C4;
+}
+
 /* Loading + error states over the stage */
 .stage-veil {
   position: absolute;

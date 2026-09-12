@@ -173,6 +173,10 @@ export function createMap(opts) {
   function drawOverlay() {
     octx.setTransform(dpr, 0, 0, dpr, 0, 0);
     octx.clearRect(0, 0, W, H);
+    // Village is one real photo per query, not a procedural scene — nothing
+    // below applies, so the overlay stays blank behind the stage note in the
+    // DOM (see index.html #stageNote and styles.css .panel-map.real-data).
+    if (state.scenario === 'village') return;
 
     drawAoiFootprint();
     if (state.vectors) drawVectors();
@@ -674,8 +678,40 @@ export function createMap(opts) {
 
   /* ---- public API -------------------------------------------------------- */
 
+  /* Village shows one real photo per query in the chat panel, not a rendered
+   * scene, so the map panel is left blank rather than painting anything. */
+  function clearImagery() {
+    for (const c of [el.after, el.before]) {
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, c.width, c.height);
+    }
+  }
+
   function loadScenario(scenarioId) {
     state.scenario = scenarioId;
+
+    if (scenarioId === 'village') {
+      state.scene = null;
+      state.measures = null;
+      state.roadStates = new Map();
+      state.cutOff = new Set();
+      state.evidence = [];
+      state.focusMask = 0;
+      state.customAoi = null;
+      state.view = { cx: GRID / 2, cy: GRID / 2, z: 1 };
+      measure();
+      clearImagery();
+      applyCompare();
+      updateLegend();
+      // updateFooter() bails out when state.measures is null (see below), so
+      // the AOI/PASS/LAYER/CLOUD readout from whatever scenario was open
+      // before would otherwise be left on screen, describing a scene that
+      // is no longer showing.
+      el.footer.innerHTML = '';
+      invalidate();
+      return;
+    }
+
     state.scene = buildScene(scenarioId);
     state.measures = analyzeScene(scenarioId);
     state.roadStates = new Map();
@@ -695,6 +731,7 @@ export function createMap(opts) {
   }
 
   function setLayer(id) {
+    if (state.scenario === 'village') return;  // no imagery layers over a real photo
     if (state.layer === id) return;
     state.layer = id;
     // Cross-fade rather than cut, so a layer change reads as the same place
@@ -711,6 +748,7 @@ export function createMap(opts) {
   }
 
   function setDate(d) {
+    if (state.scenario === 'village') return;  // no before/after pass for a real photo
     if (state.date === d) return;
     state.date = d;
     paintImagery();
@@ -719,6 +757,7 @@ export function createMap(opts) {
   }
 
   function setCompare(on) {
+    if (state.scenario === 'village') return;  // no compare slider over a single real photo
     state.compare = on;
     applyCompare();
     updateLegend();
@@ -726,6 +765,7 @@ export function createMap(opts) {
   }
 
   function setVectors(on) {
+    if (state.scenario === 'village') return;  // no road/settlement vectors over a real photo
     state.vectors = on;
     updateLegend();
     invalidate();
@@ -733,6 +773,7 @@ export function createMap(opts) {
   }
 
   function setAoiMode(on) {
+    if (state.scenario === 'village') return;  // no AOI to draw over a real photo
     state.aoiMode = on;
     el.stage.classList.toggle('drawing', on);
     if (opts.onChange) opts.onChange(getState());

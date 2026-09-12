@@ -12,13 +12,14 @@
 
 import {
   queryStream, SCENARIOS, getScenario, suggestions, indexStats,
-  LAYERS, CONTRACT_VERSION, IS_MOCK,
+  LAYERS, CONTRACT_VERSION, IS_MOCK, ensureVillageStarters,
 } from './api/mock.js';
 import { prewarm } from './render.js';
 import { createMap } from './ui/map.js';
 import { createChat } from './ui/chat.js';
 
 const el = {
+  panelMap: document.querySelector('.panel-map'),
   scenarios: document.getElementById('scenarios'),
   layerSeg: document.getElementById('layerSeg'),
   dateSeg: document.getElementById('dateSeg'),
@@ -178,6 +179,20 @@ async function selectScenario(id) {
   for (const b of el.scenarios.children) {
     b.setAttribute('aria-pressed', String(b.dataset.id === id));
   }
+  // Village is real photo-per-query data, not a procedural scene: the layer
+  // toolbar, compare slider and AOI draw do not apply to it. See styles.css.
+  el.panelMap.classList.toggle('real-data', id === 'village');
+  if (id === 'village') {
+    // A fetch failure here (e.g. the offline single-file build, where a
+    // relative fetch does not resolve the same way — see AGENT_LOG.md) should
+    // leave the chips empty, not throw across the scenario switch.
+    try {
+      await ensureVillageStarters();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[satquery] village manifest failed to load', err);
+    }
+  }
   renderDateSeg();
   renderChips();
   renderChatHead();
@@ -185,6 +200,13 @@ async function selectScenario(id) {
 }
 
 async function loadScene(id) {
+  if (id === 'village') {
+    // Real data, already retrieved offline — nothing to render or prewarm.
+    map.loadScenario(id);
+    syncToolbar();
+    chat.showEmptyState(getScenario(id), indexStats());
+    return;
+  }
   showVeil('Generating scene',
     'Rendering optical, SAR and water-index layers for both passes.');
   try {

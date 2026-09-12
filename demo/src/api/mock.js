@@ -119,6 +119,22 @@ export const SCENARIOS = [
       'How much vegetation was cleared?',
     ],
   },
+  {
+    id: 'village',
+    name: 'Village retrieval',
+    flag: 'Real data',
+    aoi: 'Khapreta village · Gujarat point cloud',
+    district: 'Real Indian Village — Point Cloud Retrieval',
+    summary: 'Not a synthetic scene: a real 163M-point village scan, retrieved by a real zero-shot CLIP '
+      + 'embedding over 4 fixed queries. Every confidence and image here is measured, not scripted.',
+    state_code: '',
+    tile_no: '',
+    before_label: '',
+    after_label: '',
+    // Filled in from backend/village_demo_manifest.json by ensureVillageStarters() —
+    // these are not authored copy, they are the manifest's own entries[].query values.
+    starters: [],
+  },
 ];
 
 export function getScenario(id) {
@@ -766,6 +782,232 @@ function buildTrace(ctx) {
   return steps;
 }
 
+/* ---- village: real point-cloud retrieval ---------------------------------
+ * Everything above this point is scripted framing over a procedural scene.
+ * This scenario is the opposite: the manifest at demo/village_demo_manifest.json
+ * (a copy of backend/village_demo_manifest.json — see AGENT_LOG.md for why two
+ * copies exist) holds real entries from a real 163M-point Indian village scan,
+ * each with a confidence that is an actual cosine similarity from a real
+ * open_clip ViT-B-32 embedding, computed offline, not at request time.
+ *
+ * This does NOT go through the TF-IDF retrieval or analyzeScene() above — the
+ * query set is 4 fixed, curated questions, so matching is plain keyword
+ * overlap against the manifest's own entries[].query strings, not a vector
+ * space. Nothing here is computed at request time except which entry the
+ * overlap picks; the confidence, image and point count are the manifest's,
+ * unmodified.
+ */
+
+let _villageManifest = null;
+let _villageManifestPromise = null;
+
+/** Fetches backend/village_demo_manifest.json (served from demo/, see README)
+ * once and caches it. Deliberately a runtime fetch, not a static import: this
+ * module is linked into the offline single-file build by demo/build.js, which
+ * cannot handle a JSON module import. */
+function loadVillageManifest() {
+  if (_villageManifest) return Promise.resolve(_villageManifest);
+  if (!_villageManifestPromise) {
+    _villageManifestPromise = fetch('village_demo_manifest.json')
+      .then((res) => {
+        if (!res.ok) throw new Error(`village manifest fetch failed: HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => { _villageManifest = data; return data; });
+  }
+  return _villageManifestPromise;
+}
+
+/** Populates the village scenario's starter chips from the manifest's own
+ * query strings, the first time the scenario is opened. */
+export async function ensureVillageStarters() {
+  const manifest = await loadVillageManifest();
+  const sc = getScenario('village');
+  if (!sc.starters.length) {
+    sc.starters = [...new Set(manifest.entries.map((e) => e.query))];
+  }
+  return manifest;
+}
+
+/* A small, fixed function-word list — not the TF-IDF module's STOPWORDS/
+ * SYNONYMS above, kept deliberately separate so this matcher stays its own
+ * simple thing. Without filtering these, "what is the weather forecast for
+ * tomorrow" shares "is"/"the"/"for" with a curated query and wrongly scores
+ * as a match; every curated query still keeps its distinguishing words
+ * (buildings, vegetation, road, ground, village, most, area…) afterwards. */
+const VILLAGE_STOPWORDS = new Set([
+  'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been',
+  'of', 'in', 'on', 'at', 'to', 'for', 'or', 'and', 'with', 'by', 'from',
+  'this', 'that', 'there', 'here', 'it', 'its',
+  'where', 'which', 'what', 'how', 'who',
+  'do', 'does', 'did', 'has', 'have', 'had',
+  'show', 'me', 'tell', 'please', 'through',
+]);
+
+function villageTokens(text) {
+  return (String(text || '').toLowerCase().match(/[a-z0-9]+/g) || [])
+    .filter((t) => !VILLAGE_STOPWORDS.has(t));
+}
+
+/** Plain keyword overlap, not the TF-IDF space above: how many content words
+ * of a manifest entry's own query string appear in the asked question,
+ * normalised by that entry's length so a short descriptor is not penalised
+ * for matching only part of a longer question. */
+function matchVillageEntry(text, entries) {
+  const qTokens = new Set(villageTokens(text));
+  let best = null;
+  let bestScore = -1;
+  for (const entry of entries) {
+    const eTokens = villageTokens(entry.query);
+    let overlap = 0;
+    for (const t of eTokens) if (qTokens.has(t)) overlap++;
+    const score = eTokens.length ? overlap / eTokens.length : 0;
+    if (score > bestScore) {
+      bestScore = score;
+      best = entry;
+    }
+  }
+  return { entry: best, score: Math.max(0, bestScore) };
+}
+
+function buildVillageTrace(ctx) {
+  const { entry, score, confidence, manifest, declined } = ctx;
+  if (declined) {
+    return [{
+      n: '01',
+      title: 'Matching query',
+      detail: `no shared keyword with any of the ${manifest.entries.length} curated queries for this scenario`,
+      sub: 'this scenario answers a fixed, curated query set rather than open-ended search',
+      ms: 160,
+      status: 'warn',
+    }];
+  }
+  return [
+    {
+      n: '01',
+      title: 'Matching query',
+      detail: `keyword overlap against ${manifest.entries.length} curated queries · best match "${entry.query}"`,
+      sub: `overlap score ${score.toFixed(2)} · plain keyword match, not the TF-IDF space above`,
+      ms: 180,
+      status: 'ok',
+    },
+    {
+      n: '02',
+      title: 'Retrieving tile',
+      detail: `${entry.tile_id} · ${entry.n_points.toLocaleString('en-US')} points`,
+      sub: manifest.source_file,
+      ms: 220,
+      status: 'ok',
+    },
+    {
+      n: '03',
+      title: 'Confidence',
+      detail: `cosine similarity ${confidence.toFixed(4)} · ${manifest.encoder}`,
+      sub: 'computed offline against the real point-cloud tile embedding, not re-computed per request',
+      ms: 140,
+      status: confidence < CONFIDENCE_FLOOR ? 'warn' : 'ok',
+    },
+  ];
+}
+
+async function queryVillage(text) {
+  const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const manifest = await loadVillageManifest();
+  const { entry, score } = matchVillageEntry(text, manifest.entries);
+  const elapsed = () => {
+    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    const ms = now - t0;
+    return ms < 1 ? +ms.toFixed(2) : Math.round(ms);
+  };
+
+  // No shared keyword with any curated query: this scenario is 4 fixed
+  // questions, not open-ended search, so it says so rather than confidently
+  // citing whichever entry happened to rank highest with zero overlap.
+  if (!entry || score <= 0) {
+    return {
+      tile_id: null,
+      confidence: 0,
+      answer:
+        `This scenario answers a fixed set of ${manifest.entries.length} curated questions about one real village scan, `
+        + `not open-ended search — "${text}" does not share a keyword with any of them. Try one of the starter questions.`,
+      image_url: '',
+      query: text,
+      scenario: 'village',
+      intent: 'village_retrieval',
+      intent_confidence: 0,
+      headline: 'No matching curated query',
+      confidence_band: confidenceBand(0),
+      answerable: false,
+      sensor: 'point cloud (LAZ) · open_clip ViT-B-32, zero-shot',
+      acquired: null,
+      acquired_pretty: manifest.source_file.split('/').pop(),
+      water_method: null,
+      trace: buildVillageTrace({ manifest, declined: true }),
+      evidence: [],
+      all_evidence: [],
+      provenance: [],
+      map_directive: null,
+      measurements: null,
+      prefiltered_tiles: manifest.entries.length,
+      indexed_tiles: manifest.entries.length,
+      ranked: [],
+      latency_ms: elapsed(),
+      contract_version: CONTRACT_VERSION,
+      is_mock: false,
+      is_real_data: true,
+    };
+  }
+
+  const confidence = entry.confidence;   // real cosine similarity, from the manifest, unmodified
+  const answer =
+    `Tile ${entry.tile_id}, ${entry.n_points.toLocaleString('en-US')} points captured. `
+    + `Confidence ${confidence.toFixed(4)} against a real CLIP embedding of this region.`;
+
+  return {
+    /* --- the shape pinned in CONTRACT.md --- */
+    tile_id: entry.tile_id,
+    confidence,
+    answer,
+    image_url: entry.image_url,
+
+    /* --- additive, demo-only; see demo/README.md --- */
+    query: text,
+    scenario: 'village',
+    intent: 'village_retrieval',
+    intent_confidence: +score.toFixed(4),
+    headline: `Tile ${entry.tile_id} retrieved`,
+    confidence_band: confidenceBand(confidence),
+    answerable: true,
+    sensor: 'point cloud (LAZ) · open_clip ViT-B-32, zero-shot',
+    acquired: null,
+    acquired_pretty: manifest.source_file.split('/').pop(),
+    water_method: null,
+    trace: buildVillageTrace({ entry, score, confidence, manifest }),
+    evidence: [{
+      id: entry.tile_id,
+      bbox: null,     // real-world UTM bbox, not the procedural grid map.js draws — no map overlay for this scenario
+      label: `Tile ${entry.tile_id}`,
+      note: `${entry.n_points.toLocaleString('en-US')} points · confidence ${confidence.toFixed(4)}`,
+    }],
+    all_evidence: [],
+    provenance: [
+      { field: 'confidence', value: confidence, method: `cosine similarity, ${manifest.encoder} embedding of the query against the point-cloud tile embedding, computed offline` },
+      { field: 'n_points', value: entry.n_points, method: 'point count inside the retrieved tile, from the source .laz scan' },
+    ],
+    map_directive: null,   // no procedural layer/date/compare applies to a real photo — see map.js
+    measurements: null,
+    prefiltered_tiles: manifest.entries.length,
+    indexed_tiles: manifest.entries.length,
+    ranked: manifest.entries.map((e) => ({
+      tile_id: e.tile_id, scenario: 'village', sensor: 'point cloud', similarity: e.confidence,
+    })),
+    latency_ms: elapsed(),
+    contract_version: CONTRACT_VERSION,
+    is_mock: false,
+    is_real_data: true,
+  };
+}
+
 /* ---- the API -------------------------------------------------------------- */
 
 function confidenceBand(c) {
@@ -783,8 +1025,10 @@ function confidenceBand(c) {
  * @returns {Promise<object>} CONTRACT.md response shape plus demo-only extras
  */
 export async function query(text, ctx = {}) {
-  const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const scenarioId = ctx.scenario || 'flood';
+  if (scenarioId === 'village') return queryVillage(text);
+
+  const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const scenario = getScenario(scenarioId);
 
   const { qvec, ranked, prefiltered, indexed } = retrieve(text, scenarioId);
